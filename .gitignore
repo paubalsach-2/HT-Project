@@ -20,8 +20,6 @@
 # OS generated files
 .DS_Store
 Thumbs.db
-
-# Visual Studio / Rider
 .vs/
 .idea/
 *.user
