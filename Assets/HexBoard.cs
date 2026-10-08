@@ -22,6 +22,7 @@ public class HexBoard : MonoBehaviour
     [Header("Què generar")]
     public bool buildStructures = true;   // parets, columnes, escales, rampes
     public bool buildRoof = true;         // pèrgola / sostre
+    public bool roofSlats = false;        // false = sense llistons sobre el camp (es veu l'arena)
     public bool roofCastsShadows = false; // false = el sostre no tapa l'arena amb ombra
     public bool buildTorches = true;      // torxes + llums + partícules
     public bool buildTerrain = true;
@@ -34,6 +35,21 @@ public class HexBoard : MonoBehaviour
     public int treeCount = 90;
     public int rockCount = 30;
     public int flowerCount = 150;
+
+    [Header("Assets: Japanese Garden Pack")]
+    public bool usePrefabs = true;                     // false = torna als arbres de primitives
+    public string pathFilter = "Japanese";             // la ruta del prefab ha de contenir aquest text
+    public string[] treeKeywords = { "Sakura", "Maple", "Pine" };
+    public string[] rockKeywords = { "Rock" };
+    public string[] toriiKeywords = { "Torii" };
+    public GameObject[] treePrefabs;                   // si és buit, es busquen sols (només a l'Editor)
+    public GameObject[] rockPrefabs;
+    public GameObject toriiPrefab;
+    public bool placeTorii = true;
+    public float toriiYaw = 0f;
+    public float toriiScale = 1f;
+    public Vector2 treeScaleRange = new Vector2(0.8f, 1.3f);
+    public Vector2 rockScaleRange = new Vector2(1f, 2f);
 
     [Header("Llum (Built-in / URP)")]
     public float sunIntensity = 1.2f;
@@ -117,6 +133,9 @@ public class HexBoard : MonoBehaviour
         BuildLighting(NewGroup("Lighting", root));
         BuildBoardDust(NewGroup("Effects", root), boardD, boardW);
 
+#if UNITY_EDITOR
+        if (usePrefabs) AutoFindPrefabs();
+#endif
         Transform env = NewGroup("Environment", root);
         if (buildTerrain) BuildTerrain(env);
         if (buildVegetation) BuildVegetation(env);
@@ -177,8 +196,9 @@ public class HexBoard : MonoBehaviour
                 RoofPiece(Prim(PrimitiveType.Cube, $"BeamSide_{sg}", s, new Vector3(sg * cx, by, 0), new Vector3(0.8f, 0.6f, hz * 2f - 1f), matWood));
                 RoofPiece(Prim(PrimitiveType.Cube, $"BeamGate_{sg}", s, new Vector3(0, by, sg * (hz - 1f)), new Vector3(cx * 2f + 1f, 0.6f, 0.8f), matWood));
             }
-            for (float z = -(hz - 2f); z <= hz - 2f + 0.01f; z += 3f)
-                RoofPiece(Prim(PrimitiveType.Cube, $"Slat_{z}", s, new Vector3(0, by + 0.35f, z), new Vector3(cx * 2f + 1f, 0.15f, 0.3f), matWood, null, false));
+            if (roofSlats)
+                for (float z = -(hz - 2f); z <= hz - 2f + 0.01f; z += 3f)
+                    RoofPiece(Prim(PrimitiveType.Cube, $"Slat_{z}", s, new Vector3(0, by + 0.35f, z), new Vector3(cx * 2f + 1f, 0.15f, 0.3f), matWood, null, false));
         }
     }
 
@@ -391,9 +411,18 @@ public class HexBoard : MonoBehaviour
         Transform trees = NewGroup("Trees", parent), rocks = NewGroup("Rocks", parent), flowers = NewGroup("Flowers", parent);
         Vector3 p;
 
+        bool hasTrees = usePrefabs && treePrefabs != null && treePrefabs.Length > 0;
+        bool hasRocks = usePrefabs && rockPrefabs != null && rockPrefabs.Length > 0;
+
         for (int i = 0; i < treeCount; i++)
         {
             if (!TryPoint(18f, 55f, out p)) continue;
+            if (hasTrees)
+            {
+                SpawnPrefab(treePrefabs[Random.Range(0, treePrefabs.Length)], trees, p,
+                            Random.Range(0, 360f), Random.Range(treeScaleRange.x, treeScaleRange.y));
+                continue;
+            }
             float s = Random.Range(0.8f, 1.6f);
             Transform t = NewGroup("Tree", trees);
             t.localPosition = p;
@@ -406,9 +435,22 @@ public class HexBoard : MonoBehaviour
         for (int i = 0; i < rockCount; i++)
         {
             if (!TryPoint(14f, 50f, out p)) continue;
+            if (hasRocks)
+            {
+                SpawnPrefab(rockPrefabs[Random.Range(0, rockPrefabs.Length)], rocks, p + Vector3.down * 0.1f,
+                            Random.Range(0, 360f), Random.Range(rockScaleRange.x, rockScaleRange.y));
+                continue;
+            }
             Prim(PrimitiveType.Sphere, "Rock", rocks, p + Vector3.up * 0.1f,
                 new Vector3(Random.Range(1f, 2.5f), Random.Range(0.6f, 1.2f), Random.Range(1f, 2.2f)), matRock,
                 new Vector3(0, Random.Range(0, 360f), 0));
+        }
+
+        // Torii a l'entrada de l'escala
+        if (usePrefabs && placeTorii && toriiPrefab != null)
+        {
+            float tz = platformSize.z / 2f + 3.5f;
+            SpawnPrefab(toriiPrefab, parent, new Vector3(0, GroundY(0, tz), tz), toriiYaw, toriiScale);
         }
 
         for (int i = 0; i < flowerCount; i++)
@@ -420,6 +462,53 @@ public class HexBoard : MonoBehaviour
             Prim(PrimitiveType.Sphere, "Head", f, new Vector3(0, 0.42f, 0), Vector3.one * 0.2f, flowerMats[Random.Range(0, flowerMats.Length)], null, false);
         }
     }
+
+    GameObject SpawnPrefab(GameObject prefab, Transform parent, Vector3 pos, float yaw, float scale)
+    {
+        var g = Instantiate(prefab, parent);
+        g.name = prefab.name;
+        g.transform.localPosition = pos;
+        g.transform.localRotation = Quaternion.Euler(0, yaw, 0);
+        g.transform.localScale = prefab.transform.localScale * scale;
+        return g;
+    }
+
+#if UNITY_EDITOR
+    // Busca els prefabs del pack dins del projecte (només si les llistes són buides)
+    void AutoFindPrefabs()
+    {
+        if (treePrefabs == null || treePrefabs.Length == 0) treePrefabs = FindPrefabs(treeKeywords);
+        if (rockPrefabs == null || rockPrefabs.Length == 0) rockPrefabs = FindPrefabs(rockKeywords);
+        if (toriiPrefab == null)
+        {
+            var t = FindPrefabs(toriiKeywords);
+            if (t.Length > 0) toriiPrefab = t[0];
+        }
+    }
+
+    GameObject[] FindPrefabs(string[] keys)
+    {
+        var list = new List<GameObject>();
+        foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Prefab"))
+        {
+            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+            if (!path.StartsWith("Assets/")) continue;
+            if (!string.IsNullOrEmpty(pathFilter) && path.IndexOf(pathFilter, System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+            string n = System.IO.Path.GetFileNameWithoutExtension(path);
+            foreach (var k in keys)
+                if (n.IndexOf(k, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    var go = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    if (go != null) list.Add(go);
+                    break;
+                }
+        }
+        return list.ToArray();
+    }
+
+    [ContextMenu("Reset Prefab Lists")]
+    void ResetPrefabLists() { treePrefabs = null; rockPrefabs = null; toriiPrefab = null; Generate(); }
+#endif
 
     // ---------------------------------------------------------------- tauler / banqueta
     void CreateBench(string name, Transform parent, float z, float w)
