@@ -169,3 +169,7 @@ Packages/packages-lock.json linguist-generated
 
 # Exceptions for .asset files such as lightning pre-baking
 LightingData.asset     binary
+
+# Terreny: binari, no tocar salts de linia
+Assets/Baked/Terrain/*.asset binary
+Assets/Waldemarst/**/*.asset binary
