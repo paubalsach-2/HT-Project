@@ -119,6 +119,72 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1001 &576889951
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 11.413494
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.00000010496399
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 10.172309
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      propertyPath: m_Name
+      value: napoleon_chibi
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1388336456}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1388336455}
+    - targetCorrespondingSourceObject: {fileID: -2511240423080479738, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1907343851}
+  m_SourcePrefab: {fileID: 100100000, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -359,12 +425,83 @@ Transform:
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
   m_LocalRotation: {x: 0.0038703543, y: -0.8870024, z: 0.46174422, w: 0.0020147788}
-  m_LocalPosition: {x: 5.37, y: 15.02, z: 14.44}
+  m_LocalPosition: {x: 5.75, y: 15.02, z: 16.23}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 55, y: -180, z: -0.5}
+--- !u!1 &1388336454 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+  m_PrefabInstance: {fileID: 576889951}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1388336455
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1388336454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1e4a2496c0130547ae55aa26b5c2605, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHUD
+  fontLabel: {fileID: 11400000, guid: 8f53a5f43d7f4d640b25cd16367f8add, type: 2}
+  fontNumber: {fileID: 11400000, guid: 5e81c3fdeeef88f4e9b6be9fd79d7807, type: 2}
+  isLocalPlayer: 1
+  showDebugPanel: 1
+  debugGoldStep: 5
+  debugLifeStep: 1
+  lowLifeThreshold: 0.25
+  goldPosition: {x: 0, y: 220}
+  livesPosition: {x: -24, y: -24}
+  debugPosition: {x: -24, y: 24}
+  bronze: {r: 0.72156864, g: 0.5372549, b: 0.24705882, a: 1}
+  panelDark: {r: 0.13725491, g: 0.101960786, b: 0.07058824, a: 0.92156863}
+  buttonColor: {r: 0.22745098, g: 0.17254902, b: 0.11372549, a: 1}
+  textCream: {r: 0.9372549, g: 0.8901961, b: 0.7764706, a: 1}
+  goldText: {r: 0.9490196, g: 0.8235294, b: 0.47843137, a: 1}
+  labelTan: {r: 0.65882355, g: 0.5372549, b: 0.3529412, a: 1}
+  gain: {r: 0.49803922, g: 0.7490196, b: 0.41568628, a: 1}
+  danger: {r: 0.8784314, g: 0.34509805, b: 0.2901961, a: 1}
+  heartRed: {r: 0.78431374, g: 0.26666668, b: 0.22745098, a: 1}
+--- !u!114 &1388336456
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1388336454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f01ab40f607234eae33ce11fd6b2e4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStats
+  startGold: 10
+  maxLives: 20
+  startLives: 20
+--- !u!1 &1907343849 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -2511240423080479738, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
+  m_PrefabInstance: {fileID: 576889951}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1907343851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1907343849}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f01ab40f607234eae33ce11fd6b2e4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStats
+  startGold: 10
+  maxLives: 20
+  startLives: 20
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -372,3 +509,4 @@ SceneRoots:
   - {fileID: 963194228}
   - {fileID: 705507995}
   - {fileID: 940643882}
+  - {fileID: 576889951}
