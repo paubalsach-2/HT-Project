@@ -15,11 +15,11 @@ using UnityEngine.InputSystem.UI;
 public class PlayerHUD : MonoBehaviour
 {
     [Header("Tipografia (TMP Font Asset)")]
-    public TMP_FontAsset fontLabel;    // Cinzel Medium
-    public TMP_FontAsset fontNumber;   // Cinzel Bold (si és buit, usa fontLabel)
+    public TMP_FontAsset fontLabel;
+    public TMP_FontAsset fontNumber;
 
     [Header("Opcions")]
-    public bool isLocalPlayer = true;  // només el jugador local construeix HUD
+    public bool isLocalPlayer = true;
     public bool showDebugPanel = true;
     public int debugGoldStep = 5;
     public int debugLifeStep = 1;
@@ -27,8 +27,8 @@ public class PlayerHUD : MonoBehaviour
 
     [Header("Posició (canvas de referència 1920x1080)")]
     public Vector2 goldPosition = new Vector2(24f, 0f);
-    public Vector2 livesPosition = new Vector2(-24f, -24f); // des de dalt a la dreta
-    public Vector2 debugPosition = new Vector2(-24f, 24f);  // des de baix a la dreta
+    public Vector2 livesPosition = new Vector2(-24f, -24f);
+    public Vector2 debugPosition = new Vector2(-24f, 24f);
 
     [Header("Paleta")]
     public Color bronze = new Color32(184, 137, 63, 255);
@@ -61,8 +61,11 @@ public class PlayerHUD : MonoBehaviour
     Sprite sRound, sCoin, sHeart;
     Transform canvasRoot;
     GameObject debugRoot;
+    GameObject gameOverRoot;
+    bool gameOverShown;
+    GameObject settingsRoot;
+    TextMeshProUGUI settingsStatus;
 
-    // ---------------------------------------------------------------- cicle de vida
     void Start()
     {
         if (!isLocalPlayer) return;
@@ -74,12 +77,17 @@ public class PlayerHUD : MonoBehaviour
         BuildGold();
         BuildLives();
         if (showDebugPanel) BuildDebug();
+        BuildSettingsMenu();
+        BuildGameOver();
 
         RefreshGold(stats.Gold, 0, false);
         RefreshLives(stats.Lives, 0, false);
 
         stats.OnGoldChanged += OnGold;
         stats.OnLivesChanged += OnLives;
+
+        if (stats.Lives <= 0)
+            ShowGameOver();
     }
 
     void OnDestroy()
@@ -96,9 +104,14 @@ public class PlayerHUD : MonoBehaviour
     }
 
     void OnGold(int v, int d) => RefreshGold(v, d, true);
-    void OnLives(int v, int d) => RefreshLives(v, d, true);
 
-    // ---------------------------------------------------------------- refresc
+    void OnLives(int v, int d)
+    {
+        RefreshLives(v, d, true);
+        if (v <= 0)
+            ShowGameOver();
+    }
+
     void RefreshGold(int v, int delta, bool animate)
     {
         Run(gold, v, delta, delta > 0 ? gain : textCream, goldText, bronze, animate);
@@ -109,7 +122,7 @@ public class PlayerHUD : MonoBehaviour
         int max = stats.MaxLives;
         bool low = v <= Mathf.CeilToInt(max * lowLifeThreshold);
         livesMax.text = "/ " + max;
-        livesFill.anchorMax = new Vector2(max > 0 ? (float)v / max : 0f, 1f);
+        livesFill.anchorMax = new Vector2(max > 0 ? Mathf.Clamp01((float)v / max) : 0f, 1f);
         livesFillImg.color = low ? danger : heartRed;
         Run(lives, v, delta, delta > 0 ? gain : danger, low ? danger : textCream, low ? danger : bronze, animate);
     }
@@ -122,7 +135,6 @@ public class PlayerHUD : MonoBehaviour
         s.anim = StartCoroutine(Animate(s, to, delta, flash, animate));
     }
 
-    // Compte numèric, flaix a la vora, pols del número i text flotant (+5 / -1)
     IEnumerator Animate(Stat s, int to, int delta, Color flash, bool animate)
     {
         var numRt = s.number.rectTransform;
@@ -156,7 +168,6 @@ public class PlayerHUD : MonoBehaviour
         s.anim = null;
     }
 
-    // ---------------------------------------------------------------- construcció
     void BuildCanvas()
     {
         var go = new GameObject("HUD_Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -175,7 +186,6 @@ public class PlayerHUD : MonoBehaviour
     void BuildGold()
     {
         var p = Panel("GoldPanel", canvasRoot, new Vector2(0f, 0f), goldPosition, new Vector2(290f, 100f), bronze, panelDark, out gold.border);
-
         var coin = Img("Coin", p, sCoin, Color.white);
         Place(coin.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(20f, 0f), new Vector2(60f, 60f));
 
@@ -184,14 +194,12 @@ public class PlayerHUD : MonoBehaviour
 
         gold.number = Txt("Number", p, "0", 48f, goldText, TextAlignmentOptions.Left, true);
         Place(gold.number.rectTransform, new Vector2(0f, 0f), new Vector2(0f, 0.5f), new Vector2(98f, 36f), new Vector2(170f, 56f));
-
         gold.popup = MakePopup(p);
     }
 
     void BuildLives()
     {
         var p = Panel("LivesPanel", canvasRoot, new Vector2(1f, 1f), livesPosition, new Vector2(300f, 108f), bronze, panelDark, out lives.border);
-
         var heart = Img("Heart", p, sHeart, heartRed);
         Place(heart.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(18f, 2f), new Vector2(48f, 48f));
 
@@ -249,6 +257,193 @@ public class PlayerHUD : MonoBehaviour
         Stretch(t.rectTransform, 0f);
     }
 
+
+    void BuildSettingsMenu()
+    {
+        var openImage = Img("SettingsButton", canvasRoot, sRound, panelDark, true, true);
+        Place(openImage.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f),
+            new Vector2(24f, -24f), new Vector2(190f, 58f));
+        var openText = Txt("SettingsButtonText", openImage.transform, "CONFIGURACIÓ", 20f,
+            goldText, TextAlignmentOptions.Center, false);
+        Stretch(openText.rectTransform, 4f);
+        var openButton = openImage.gameObject.AddComponent<Button>();
+        openButton.targetGraphic = openImage;
+        SetButtonColors(openButton);
+        openButton.onClick.AddListener(() => settingsRoot.SetActive(!settingsRoot.activeSelf));
+
+        var overlay = Img("SettingsOverlay", canvasRoot, null, new Color(0f, 0f, 0f, 0.65f), false, true);
+        Stretch(overlay.rectTransform, 0f);
+        settingsRoot = overlay.gameObject;
+
+        var panel = Panel("SettingsPanel", overlay.transform, new Vector2(0.5f, 0.5f),
+            Vector2.zero, new Vector2(650f, 500f), bronze, panelDark, out _);
+
+        var title = Txt("SettingsTitle", panel, "CONFIGURACIÓ", 42f, goldText,
+            TextAlignmentOptions.Center, true);
+        Place(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0f, -28f), new Vector2(580f, 60f));
+
+        var description = Txt("SettingsDescription", panel, "Tria la qualitat gràfica", 24f,
+            textCream, TextAlignmentOptions.Center, false);
+        Place(description.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0f, -85f), new Vector2(580f, 40f));
+
+        settingsStatus = Txt("SettingsStatus", panel, "", 22f, labelTan,
+            TextAlignmentOptions.Center, false);
+        Place(settingsStatus.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0f, -125f), new Vector2(580f, 36f));
+
+        CreateSettingsOption(panel, "MOLT BAIX", new Vector2(0f, -175f), 0);
+        CreateSettingsOption(panel, "BAIX", new Vector2(0f, -230f), 1);
+        CreateSettingsOption(panel, "MITJÀ", new Vector2(0f, -285f), 2);
+        CreateSettingsOption(panel, "ALT", new Vector2(0f, -340f), 3);
+
+        var closeImage = Img("CloseSettings", panel, sRound, buttonColor, true, true);
+        Place(closeImage.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(0f, 15f), new Vector2(220f, 45f));
+        var closeButton = closeImage.gameObject.AddComponent<Button>();
+        closeButton.targetGraphic = closeImage;
+        SetButtonColors(closeButton);
+        closeButton.onClick.AddListener(() => settingsRoot.SetActive(false));
+        var closeText = Txt("CloseSettingsText", closeImage.transform, "TANCAR", 20f,
+            textCream, TextAlignmentOptions.Center, false);
+        Stretch(closeText.rectTransform, 4f);
+
+        settingsRoot.SetActive(false);
+        UpdateSettingsStatus(2);
+    }
+
+    void CreateSettingsOption(Transform parent, string label, Vector2 position, int preset)
+    {
+        var image = Img("Quality_" + label, parent, sRound, buttonColor, true, true);
+        Place(image.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            position, new Vector2(420f, 45f));
+        var button = image.gameObject.AddComponent<Button>();
+        button.targetGraphic = image;
+        SetButtonColors(button);
+        button.onClick.AddListener(() => ApplyQualityPreset(preset));
+
+        var text = Txt("Text", image.transform, label, 21f, textCream,
+            TextAlignmentOptions.Center, false);
+        Stretch(text.rectTransform, 3f);
+    }
+
+    void ApplyQualityPreset(int preset)
+    {
+        int levels = QualitySettings.names.Length;
+        if (levels > 0)
+        {
+            int index = Mathf.RoundToInt((preset / 3f) * (levels - 1));
+            QualitySettings.SetQualityLevel(Mathf.Clamp(index, 0, levels - 1), true);
+        }
+
+        switch (preset)
+        {
+            case 0:
+                QualitySettings.shadows = ShadowQuality.Disable;
+                QualitySettings.shadowDistance = 0f;
+                QualitySettings.vSyncCount = 0;
+                Application.targetFrameRate = 60;
+                break;
+            case 1:
+                QualitySettings.shadows = ShadowQuality.HardOnly;
+                QualitySettings.shadowDistance = 20f;
+                QualitySettings.vSyncCount = 0;
+                Application.targetFrameRate = 60;
+                break;
+            case 2:
+                QualitySettings.shadows = ShadowQuality.All;
+                QualitySettings.shadowDistance = 40f;
+                QualitySettings.vSyncCount = 1;
+                Application.targetFrameRate = 60;
+                break;
+            default:
+                QualitySettings.shadows = ShadowQuality.All;
+                QualitySettings.shadowDistance = 80f;
+                QualitySettings.vSyncCount = 1;
+                Application.targetFrameRate = -1;
+                break;
+        }
+
+        UpdateSettingsStatus(preset);
+    }
+
+    void UpdateSettingsStatus(int preset)
+    {
+        if (settingsStatus == null) return;
+        string[] names = { "Molt baix", "Baix", "Mitjà", "Alt" };
+        settingsStatus.text = "Nivell actual: " + names[Mathf.Clamp(preset, 0, 3)];
+    }
+
+    void SetButtonColors(Button button)
+    {
+        var colors = button.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = Color.white;
+        colors.pressedColor = Color.white;
+        colors.selectedColor = Color.white;
+        colors.disabledColor = Color.white;
+        colors.colorMultiplier = 1f;
+        button.colors = colors;
+    }
+
+    void BuildGameOver()
+    {
+        var overlay = Img("GameOverOverlay", canvasRoot, null, new Color(0f, 0f, 0f, 0.65f), false, true);
+        Stretch(overlay.rectTransform, 0f);
+        gameOverRoot = overlay.gameObject;
+
+        var p = Panel("GameOverPanel", overlay.transform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600f, 330f), bronze, panelDark, out _);
+
+        var title = Txt("GameOverTitle", p, "HAS PERDUT", 48f, goldText, TextAlignmentOptions.Center, true);
+        Place(title.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 75f), new Vector2(540f, 75f));
+
+        var subtitle = Txt("GameOverSubtitle", p, "T'has quedat sense vides", 24f, textCream, TextAlignmentOptions.Center, false);
+        Place(subtitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(520f, 45f));
+
+        CreateGameOverButton(p, "TORNAR A JUGAR", new Vector2(-145f, -75f), RestartGame);
+        CreateGameOverButton(p, "TANCAR EL JOC", new Vector2(145f, -75f), QuitGame);
+
+        gameOverRoot.SetActive(false);
+    }
+
+    void CreateGameOverButton(Transform parent, string text, Vector2 position, UnityAction action)
+    {
+        var img = Img("Button_" + text, parent, sRound, buttonColor, true, true);
+        Place(img.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position, new Vector2(260f, 65f));
+
+        var button = img.gameObject.AddComponent<Button>();
+        button.targetGraphic = img;
+        SetButtonColors(button);
+        button.onClick.AddListener(action);
+
+        var label = Txt("Text", img.transform, text, 20f, textCream, TextAlignmentOptions.Center, false);
+        Stretch(label.rectTransform, 5f);
+    }
+
+    void ShowGameOver()
+    {
+        if (gameOverShown) return;
+        gameOverShown = true;
+        gameOverRoot.SetActive(true);
+    }
+
+    void RestartGame()
+    {
+        stats.ResetStats();
+        gameOverShown = false;
+        gameOverRoot.SetActive(false);
+    }
+
+    void QuitGame()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
+
     TextMeshProUGUI MakePopup(Transform parent)
     {
         var t = Txt("Popup", parent, "", 28f, gain, TextAlignmentOptions.Right, true);
@@ -257,8 +452,6 @@ public class PlayerHUD : MonoBehaviour
         return t;
     }
 
-    // ---------------------------------------------------------------- helpers UI
-    // Panell amb vora de bronze i fons fosc. El pivot coincideix amb l'ancoratge.
     Transform Panel(string name, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size, Color border, Color fill, out Image borderImg)
     {
         borderImg = Img(name, parent, sRound, border, true);
@@ -323,8 +516,6 @@ public class PlayerHUD : MonoBehaviour
 #endif
     }
 
-    // ---------------------------------------------------------------- sprites procedurals
-    // Sense assets externs: rectangle arrodonit (9-slice), moneda i cor.
     void BuildSprites()
     {
         sRound = MakeSprite(32, new Vector4(10, 10, 10, 10), (x, y) =>
@@ -356,7 +547,6 @@ public class PlayerHUD : MonoBehaviour
 
     static float Cov(float d) => Mathf.Clamp01(0.5f - d);
 
-    // Corba implícita del cor: (x²+y²-1)³ - x²y³ <= 0, amb 3x3 de suavitzat
     static float HeartCov(int x, int y, float k)
     {
         int hit = 0;

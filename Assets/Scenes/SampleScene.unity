@@ -455,7 +455,7 @@ MonoBehaviour:
   debugGoldStep: 5
   debugLifeStep: 1
   lowLifeThreshold: 0.25
-  goldPosition: {x: 0, y: 220}
+  goldPosition: {x: 24, y: 24}
   livesPosition: {x: -24, y: -24}
   debugPosition: {x: -24, y: 24}
   bronze: {r: 0.72156864, g: 0.5372549, b: 0.24705882, a: 1}

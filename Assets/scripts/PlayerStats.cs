@@ -2,8 +2,6 @@ using System;
 using UnityEngine;
 
 // Estat del jugador (or + vides). Sense lògica de joc: només dades i events.
-// Els futurs sistemes (economia, combat, botiga) només han de cridar aquests mètodes
-// i el HUD s'actualitza sol.
 public class PlayerStats : MonoBehaviour
 {
     [Header("Inici")]
@@ -16,7 +14,6 @@ public class PlayerStats : MonoBehaviour
     public int MaxLives => maxLives;
     public bool IsDead => Lives <= 0;
 
-    // (valor nou, diferència)
     public event Action<int, int> OnGoldChanged;
     public event Action<int, int> OnLivesChanged;
 
@@ -29,7 +26,6 @@ public class PlayerStats : MonoBehaviour
     // ---------------------------------------------------------------- or
     public void AddGold(int amount) => SetGold(Gold + amount);
 
-    // Retorna false si no n'hi ha prou (no resta res)
     public bool TrySpend(int amount)
     {
         if (amount < 0 || Gold < amount) return false;
@@ -56,5 +52,11 @@ public class PlayerStats : MonoBehaviour
         int delta = value - Lives;
         Lives = value;
         OnLivesChanged?.Invoke(Lives, delta);
+    }
+
+    public void ResetStats()
+    {
+        SetGold(startGold);
+        SetLives(startLives);
     }
 }
