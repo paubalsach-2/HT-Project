@@ -337,7 +337,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 6635714459650566143, guid: c139387410e38ce409bc36bbba0f46d9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1861084628}
   m_SourcePrefab: {fileID: 100100000, guid: c139387410e38ce409bc36bbba0f46d9, type: 3}
 --- !u!1 &963194225
 GameObject:
@@ -350,6 +353,7 @@ GameObject:
   - component: {fileID: 963194228}
   - component: {fileID: 963194227}
   - component: {fileID: 963194226}
+  - component: {fileID: 963194229}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -424,13 +428,140 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.0038703543, y: -0.8870024, z: 0.46174422, w: 0.0020147788}
+  m_LocalRotation: {x: -0.000000055559664, y: 0.8433915, z: -0.5372996, w: -0.00000037620487}
   m_LocalPosition: {x: 5.75, y: 15.02, z: 16.23}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 55, y: -180, z: -0.5}
+  m_LocalEulerAnglesHint: {x: 115, y: 0, z: -180}
+--- !u!114 &963194229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e941c8100b56518439b798ad59a51f7c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TFTCameraController
+  target: {fileID: 1147859273}
+  offset: {x: 0, y: 14, z: -10}
+  panSpeed: 20
+  panBorderThickness: 15
+  useEdgeScrolling: 1
+  panLimitX: {x: -20, y: 20}
+  panLimitZ: {x: -20, y: 20}
+  scrollSpeed: 20
+  minY: 6
+  maxY: 20
+--- !u!1 &1147859271 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+  m_PrefabInstance: {fileID: 1510428731}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1147859272
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1147859271}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1ba6361a1496ea448de446cc834cfec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AnimadorPersonaje3D
+  velocidadMovimiento: 5
+  velocidadGiro: 14
+  distanciaParada: 0.08
+  permitirMantenerClicDerecho: 1
+  capaSuelo:
+    m_Bits: 4294967295
+  camaraJugador: {fileID: 0}
+  seguirConCamara: 1
+  suavizadoCamara: 8
+  anguloCamara: {x: 52, y: 0, z: 0}
+  distanciaZoomActual: 11
+  zoomMinimo: 4.5
+  zoomMaximo: 18
+  sensibilidadZoom: 4
+  suavizadoZoom: 10
+  texturaSpritesheetClic: {fileID: 0}
+  columnasSpritesheetClic: 6
+  filasSpritesheetClic: 6
+  fpsAnimacionClic: 40
+  tamanoEfectoClic: 1.8
+  fotogramasGifClic: []
+  prefabEfectoClic: {fileID: 0}
+  velocidadCicloCaminar: 11
+  velocidadCicloIdle: 3.2
+  inclinacionAlCaminar: 15
+  alturaReboteCaminar: 0.07
+  destino: {x: 0, y: 0, z: 0}
+  estaCaminando: 0
+  fase: 0
+  zoomObjetivo: 0
+  ultimoTiempoEfectoClic: -10
+  posBaseRaiz: {x: 0, y: 0, z: 0}
+  texturaClicFallback: {fileID: 0}
+  piernaIzq: {fileID: 0}
+  piernaDer: {fileID: 0}
+  brazoIzq: {fileID: 0}
+  brazoDer: {fileID: 0}
+  baston: {fileID: 0}
+  pomoBaston: {fileID: 0}
+  cintaCapa: {fileID: 0}
+  piezasChistera: []
+  piezasLlamas: []
+--- !u!4 &1147859273 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+  m_PrefabInstance: {fileID: 1510428731}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1147859274
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1147859271}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f068d73ed14ddf44c96c8e6f3dede34b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LittleLegendMovement
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  clickEffectPrefab: {fileID: 0}
+  clickEffectDuration: 0.8
+  rotationSpeed: 15
+  characterAnimator: {fileID: 0}
+--- !u!195 &1147859275
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1147859271}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 7
+  m_Acceleration: 60
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
 --- !u!1 &1388336454 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
@@ -482,6 +613,121 @@ MonoBehaviour:
   startGold: 10
   maxLives: 20
   startLives: 20
+--- !u!1001 &1510428731
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 9.588831
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.00000061449805
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 10.202922
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      propertyPath: m_Name
+      value: personaje_3d_estilo_tft
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1147859272}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1147859275}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1147859274}
+  m_SourcePrefab: {fileID: 100100000, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
+--- !u!1 &1861084626 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6635714459650566143, guid: c139387410e38ce409bc36bbba0f46d9, type: 3}
+  m_PrefabInstance: {fileID: 940643882}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1861084628
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1861084626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshSurface
+  m_SerializedVersion: 0
+  m_AgentTypeID: 0
+  m_CollectObjects: 0
+  m_Size: {x: 10, y: 10, z: 10}
+  m_Center: {x: 0, y: 2, z: 0}
+  m_LayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_UseGeometry: 0
+  m_DefaultArea: 0
+  m_GenerateLinks: 0
+  m_IgnoreNavMeshAgent: 1
+  m_IgnoreNavMeshObstacle: 1
+  m_OverrideTileSize: 0
+  m_TileSize: 256
+  m_OverrideVoxelSize: 0
+  m_VoxelSize: 0.16666667
+  m_MinRegionArea: 2
+  m_NavMeshData: {fileID: 23800000, guid: 436ef966e0a3e6e47a3e096250018d3f, type: 2}
+  m_BuildHeightMesh: 0
 --- !u!1 &1907343849 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -2511240423080479738, guid: 13d80ef9c6ce36144af55a82fcdae154, type: 3}
@@ -510,3 +756,4 @@ SceneRoots:
   - {fileID: 705507995}
   - {fileID: 940643882}
   - {fileID: 576889951}
+  - {fileID: 1510428731}
