@@ -428,13 +428,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.000000055559664, y: 0.8433915, z: -0.5372996, w: -0.00000037620487}
-  m_LocalPosition: {x: 5.75, y: 15.02, z: 16.23}
+  m_LocalRotation: {x: -0.0000000059798566, y: 0.90630776, z: -0.42261845, w: -0.00000038023842}
+  m_LocalPosition: {x: 5.7500024, y: 14.623728, z: 19.813707}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 115, y: 0, z: -180}
+  m_LocalEulerAnglesHint: {x: 130, y: 0, z: -180}
 --- !u!114 &963194229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -448,7 +448,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TFTCameraController
   target: {fileID: 1147859273}
-  offset: {x: 0, y: 14, z: -10}
+  cameraHeight: 15
+  isLocked: 0
+  smoothFollowSpeed: 12
   panSpeed: 20
   panBorderThickness: 15
   useEdgeScrolling: 1
@@ -474,48 +476,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1ba6361a1496ea448de446cc834cfec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimadorPersonaje3D
-  velocidadMovimiento: 5
-  velocidadGiro: 14
-  distanciaParada: 0.08
-  permitirMantenerClicDerecho: 1
-  capaSuelo:
-    m_Bits: 4294967295
-  camaraJugador: {fileID: 0}
-  seguirConCamara: 1
-  suavizadoCamara: 8
-  anguloCamara: {x: 52, y: 0, z: 0}
-  distanciaZoomActual: 11
-  zoomMinimo: 4.5
-  zoomMaximo: 18
-  sensibilidadZoom: 4
-  suavizadoZoom: 10
-  texturaSpritesheetClic: {fileID: 0}
-  columnasSpritesheetClic: 6
-  filasSpritesheetClic: 6
-  fpsAnimacionClic: 40
-  tamanoEfectoClic: 1.8
-  fotogramasGifClic: []
-  prefabEfectoClic: {fileID: 0}
-  velocidadCicloCaminar: 11
-  velocidadCicloIdle: 3.2
-  inclinacionAlCaminar: 15
-  alturaReboteCaminar: 0.07
-  destino: {x: 0, y: 0, z: 0}
-  estaCaminando: 0
-  fase: 0
-  zoomObjetivo: 0
-  ultimoTiempoEfectoClic: -10
-  posBaseRaiz: {x: 0, y: 0, z: 0}
-  texturaClicFallback: {fileID: 0}
-  piernaIzq: {fileID: 0}
-  piernaDer: {fileID: 0}
-  brazoIzq: {fileID: 0}
-  brazoDer: {fileID: 0}
-  baston: {fileID: 0}
-  pomoBaston: {fileID: 0}
-  cintaCapa: {fileID: 0}
-  piezasChistera: []
-  piezasLlamas: []
 --- !u!4 &1147859273 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
@@ -536,7 +496,7 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 4294967295
-  clickEffectPrefab: {fileID: 0}
+  clickEffectPrefab: {fileID: 3813296246210567556, guid: cf4f2f70ab00bb7409077886821f9927, type: 3}
   clickEffectDuration: 0.8
   rotationSpeed: 15
   characterAnimator: {fileID: 0}
