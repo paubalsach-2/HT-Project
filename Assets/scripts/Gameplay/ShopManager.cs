@@ -18,6 +18,8 @@ public class ShopManager : MonoBehaviour
 
     public ShopSystem Shop { get; private set; }
     public event Action<string> OnMessage;
+    public BenchView BoardView => benchView;   // la fa servir CombatManager
+    public bool LockInput;                     // CombatManager el posa a true durant el combat
 
     PlayerStats stats;
     BenchView benchView;
@@ -45,13 +47,14 @@ public class ShopManager : MonoBehaviour
         }
 
         if (GetComponent<GameOverUI>() == null) gameObject.AddComponent<GameOverUI>(); // pantalla de derrota
+        if (GetComponent<CombatManager>() == null) gameObject.AddComponent<CombatManager>(); // combat
         new GameObject("ShopUI").AddComponent<ShopUI>().Init(this, stats, cam, reserveCameraBottom, shopBarHeight);
         Shop.NewRound(); // primera botiga gratuïta
     }
 
     void Update()
     {
-        if (benchView != null) benchView.Locked = stats.IsDead;
+        if (benchView != null) benchView.Locked = stats.IsDead || LockInput;
         if (stats.IsDead) return; // derrota: la botiga queda bloquejada
         if (InputUtil.Pressed(Hotkey.Reroll)) Reroll();
         if (InputUtil.Pressed(Hotkey.BuyXp)) BuyXp();

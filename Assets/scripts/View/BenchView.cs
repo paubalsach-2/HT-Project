@@ -16,6 +16,7 @@ public class BenchView : MonoBehaviour
         public bool isBench;
         public bool valid;       // es pot deixar una unitat aquí
         public int index;        // índex al banc o al tauler (-1 si no és vàlida)
+        public int c, r;         // coordenades Tile_c_r (només caselles del tauler)
         public GameObject ring, fill;
         public Renderer fillRenderer;
     }
@@ -36,6 +37,8 @@ public class BenchView : MonoBehaviour
     public bool Locked;                       // derrota: res no es pot moure
     public event Action<string> OnMessage;
     public bool IsDragging => isDragging;
+    public Transform BoardRoot { get; private set; }   // arrel "Board" amb les caselles Tile_c_r
+    public float TileRadius => tileRadius;             // mida de referència per crear UnitView
 
     Bench bench;
     Camera cam;
@@ -113,6 +116,7 @@ public class BenchView : MonoBehaviour
             return;
         }
 
+        BoardRoot = boardRoot;
         var list = new List<BoardTile>();
         Vector3 sum = Vector3.zero;
         foreach (Transform child in boardRoot)
@@ -164,7 +168,11 @@ public class BenchView : MonoBehaviour
         });
 
         for (int i = 0; i < mine.Count && i < Bench.BoardSize; i++)
-            AddCell(boardCells, mine[i].pos, false, true, i);
+        {
+            var cell = AddCell(boardCells, mine[i].pos, false, true, i);
+            cell.c = mine[i].c;
+            cell.r = mine[i].r;
+        }
         foreach (var t in theirs)
             AddCell(enemyCells, t.pos, false, false, -1);
 
@@ -431,6 +439,28 @@ public class BenchView : MonoBehaviour
         }
         if (!(isDragging && v == dragging)) v.transform.position = pos;
         v.Refresh();
+    }
+
+    // ---------------------------------------------------------------- combat
+    // Coordenades Tile_c_r de la casella del tauler amb aquest índex (0..BoardSize-1)
+    public bool TryGetBoardCoord(int index, out int c, out int r)
+    {
+        c = 0; r = 0;
+        if (index < 0 || index >= boardCells.Count) return false;
+        c = boardCells[index].c;
+        r = boardCells[index].r;
+        return true;
+    }
+
+    // Amaga/mostra les unitats reals del tauler (durant el combat lluiten còpies)
+    public void SetBoardUnitsVisible(bool visible)
+    {
+        if (bench == null) return;
+        for (int i = 0; i < Bench.BoardSize; i++)
+        {
+            var u = bench.BoardAt(i);
+            if (u != null && views.TryGetValue(u, out var v)) v.gameObject.SetActive(visible);
+        }
     }
 
     // ---------------------------------------------------------------- consulta
