@@ -28,7 +28,7 @@ public class CombatManager : MonoBehaviour
     public int testEnemyMaxTier = 2;
 
     [Header("Interfície de combat")]
-    public bool showHealthBars = true;  // barres de vida, números de dany i tooltip
+    public bool showHealthBars = true;  // barres de vida i números de dany
     public bool debugGUI = true;        // botó "Provar combat" + text de resultat
 
     public bool IsRunning { get; private set; }   // combat en curs o pausa de resultat
@@ -53,7 +53,7 @@ public class CombatManager : MonoBehaviour
     readonly System.Random rng = new System.Random();
     float elapsed, resultTimer;
     bool finished;
-    GUIStyle bigStyle, smallStyle, tipStyle, floatStyle;
+    GUIStyle bigStyle, smallStyle, floatStyle;
 
     void Awake()
     {
@@ -125,6 +125,14 @@ public class CombatManager : MonoBehaviour
         finished = false;
         IsRunning = true;
         return true;
+    }
+
+    // La unitat de combat que té aquesta vista (per al panell d'informació); null si no n'hi ha
+    public CombatUnit FindCombatUnit(UnitView v)
+    {
+        if (v == null || !IsRunning) return null;
+        foreach (var u in units) if (u.View == v) return u;
+        return null;
     }
 
     void AddUnit(UnitInstance src, CombatTeam team, Vector2Int coord)
@@ -272,8 +280,6 @@ public class CombatManager : MonoBehaviour
         if (smallStyle != null) return;
         smallStyle = new GUIStyle(GUI.skin.label) { fontSize = 11, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
         smallStyle.normal.textColor = Color.white;
-        tipStyle = new GUIStyle(GUI.skin.label) { fontSize = 13, alignment = TextAnchor.UpperLeft };
-        tipStyle.normal.textColor = Color.white;
         floatStyle = new GUIStyle(GUI.skin.label) { fontSize = 18, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
     }
 
@@ -292,17 +298,6 @@ public class CombatManager : MonoBehaviour
         GUI.color = old;
     }
 
-    static void Line(Vector2 a, Vector2 b, float thick, Color c)
-    {
-        Vector2 d = b - a;
-        float len = d.magnitude;
-        if (len < 1f) return;
-        var m = GUI.matrix;
-        GUIUtility.RotateAroundPivot(Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg, a);
-        Fill(new Rect(a.x, a.y - thick * 0.5f, len, thick), c);
-        GUI.matrix = m;
-    }
-
     // Amplada de la barra en píxels: segueix el zoom de la càmera
     float BarWidth(Vector3 anchor)
     {
@@ -312,42 +307,12 @@ public class CombatManager : MonoBehaviour
         return Mathf.Clamp(Mathf.Abs(b - a), 34f, 120f);
     }
 
-    // Centre aproximat del cos (per al ratolí i per a la línia cap a l'objectiu)
-    static Vector3 BodyCenter(CombatUnit u) => Vector3.Lerp(u.View.transform.position, u.BarAnchor, 0.45f);
-
     void DrawUnitsUI()
     {
-        Vector2 mouse = Event.current.mousePosition;
-
-        // la unitat sota el ratolí (la més propera dins de 45 px)
-        CombatUnit hovered = null;
-        float best = 45f * 45f;
         foreach (var u in units)
         {
-            if (!u.Alive || !ToGui(BodyCenter(u), out var c)) continue;
-            float d = (c - mouse).sqrMagnitude;
-            if (d < best) { best = d; hovered = u; }
-        }
-
-        // línia fins al seu objectiu
-        if (hovered != null && hovered.Target != null && hovered.Target.Alive
-            && ToGui(BodyCenter(hovered), out var pa) && ToGui(BodyCenter(hovered.Target), out var pb))
-        {
-            Color lc = hovered.Team == CombatTeam.Player ? playerCol : enemyCol;
-            lc.a = 0.85f;
-            Line(pa, pb, 2f, lc);
-        }
-
-        // barres (la de la unitat marcada al final perquè quedi a sobre)
-        foreach (var u in units)
-        {
-            if (!u.Alive || u == hovered || !ToGui(u.BarAnchor, out var p)) continue;
+            if (!u.Alive || !ToGui(u.BarAnchor, out var p)) continue;
             DrawBar(u, p, BarWidth(u.BarAnchor), false);
-        }
-        if (hovered != null && ToGui(hovered.BarAnchor, out var hp))
-        {
-            DrawBar(hovered, hp, BarWidth(hovered.BarAnchor) * 1.3f, true);
-            DrawTooltip(hovered, mouse);
         }
     }
 
@@ -375,28 +340,6 @@ public class CombatManager : MonoBehaviour
 
         if (hover)
             GUI.Label(r, Mathf.CeilToInt(u.Hp) + " / " + Mathf.RoundToInt(max), smallStyle);
-    }
-
-    void DrawTooltip(CombatUnit u, Vector2 mouse)
-    {
-        var box = new Rect(
-            Mathf.Min(mouse.x + 18f, Screen.width - 224f),
-            Mathf.Min(mouse.y + 18f, Screen.height - 106f),
-            220f, 102f);
-        Fill(box, new Color(0f, 0f, 0f, 0.82f));
-        Fill(new Rect(box.x, box.y, 3f, box.height), u.Team == CombatTeam.Player ? playerCol : enemyCol);
-
-        string tgt = (u.Target != null && u.Target.Alive) ? u.Target.Source.Def.Name : "-";
-        string[] lines =
-        {
-            u.Source.Def.Name,
-            (u.Team == CombatTeam.Player ? "Jugador" : "Enemic") + "   Estrelles: " + u.Source.Star,
-            "Vida: " + Mathf.CeilToInt(u.Hp) + " / " + Mathf.RoundToInt(u.Stats.MaxHp),
-            "Atac: " + Mathf.RoundToInt(u.Stats.Attack) + "   Vel.: " + u.Stats.AttackSpeed.ToString("0.0") + "/s",
-            "Abast: " + u.Stats.Range + "   Objectiu: " + tgt
-        };
-        for (int i = 0; i < lines.Length; i++)
-            GUI.Label(new Rect(box.x + 10f, box.y + 6f + i * 18f, box.width - 14f, 20f), lines[i], tipStyle);
     }
 
     void DrawFloatingTexts()

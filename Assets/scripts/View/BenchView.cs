@@ -326,7 +326,7 @@ public class BenchView : MonoBehaviour
 
     static bool OverUI()
     {
-        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        return (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) || UnitInspector.PointerOverPanel;
     }
 
     void BeginDrag()

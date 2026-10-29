@@ -68,9 +68,6 @@ public sealed class CombatUnit
         var body = view.transform.Find("Body");
         if (body != null) h = body.localScale.y;
         anchorHeight = h + tileRadius * 1.1f;
-
-        // cap collider: el ratolí no ha de poder agafar ni vendre les còpies de combat
-        foreach (var col in view.GetComponentsInChildren<Collider>()) col.enabled = false;
     }
 
     // ---------------------------------------------------------------- bucle

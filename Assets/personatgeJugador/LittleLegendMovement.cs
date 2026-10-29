@@ -20,6 +20,7 @@ public class LittleLegendMovement : MonoBehaviour
 
     private NavMeshAgent agent;
     private Camera mainCam;
+    private bool ignoreHold; // el clic dret actual va començar sobre un personatge/panell/UI
 
     void Start()
     {
@@ -36,10 +37,13 @@ public class LittleLegendMovement : MonoBehaviour
         // Si prefereixes clic esquerre, canvia el (1) per (0)
         if (Input.GetMouseButtonDown(1))
         {
-            MoveToCursor(true);
+            // Clic dret sobre un aliat/enemic, sobre el panell d'informació o sobre la UI:
+            // no movem el personatge (el clic serveix per obrir el panell)
+            ignoreHold = UnitInspector.BlocksWorldClick;
+            if (!ignoreHold) MoveToCursor(true);
         }
         // Si mantens premut el clic dret, el personatge segueix el cursor sense spamejar l'efecte
-        else if (Input.GetMouseButton(1))
+        else if (Input.GetMouseButton(1) && !ignoreHold)
         {
             MoveToCursor(false);
         }

@@ -48,6 +48,7 @@ public class ShopManager : MonoBehaviour
 
         if (GetComponent<GameOverUI>() == null) gameObject.AddComponent<GameOverUI>(); // pantalla de derrota
         if (GetComponent<CombatManager>() == null) gameObject.AddComponent<CombatManager>(); // combat
+        if (GetComponent<UnitInspector>() == null) gameObject.AddComponent<UnitInspector>(); // aura + panell d'informació
         new GameObject("ShopUI").AddComponent<ShopUI>().Init(this, stats, cam, reserveCameraBottom, shopBarHeight);
         Shop.NewRound(); // primera botiga gratuïta
     }
@@ -59,7 +60,7 @@ public class ShopManager : MonoBehaviour
         if (InputUtil.Pressed(Hotkey.Reroll)) Reroll();
         if (InputUtil.Pressed(Hotkey.BuyXp)) BuyXp();
 
-        if (benchView != null && (InputUtil.RightClickDown || InputUtil.Pressed(Hotkey.Sell)))
+        if (benchView != null && InputUtil.Pressed(Hotkey.Sell)) // el clic dret ara obre el panell d'informació
         {
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
             Sell(benchView.UnderMouse());
@@ -73,7 +74,7 @@ public class ShopManager : MonoBehaviour
 
     public void Sell(UnitInstance u)
     {
-        if (u == null) return;
+        if (u == null || !Shop.Bench.Contains(u)) return; // només es venen unitats reals (no còpies de combat)
         int gold = Shop.Sell(u);
         if (gold > 0) Say("Venut: +" + gold + " or");
     }
