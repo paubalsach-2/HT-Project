@@ -7,6 +7,8 @@ using UnityEngine.Rendering;
 // Posa les unitats del jugador sobre les caselles 3D (banqueta + meitat del jugador del tauler)
 // i deixa arrossegar-les amb el ratolí. Mentre s'arrossega, les zones s'il·luminen:
 // verd = es pot deixar, vermell = zona prohibida (meitat enemiga).
+// Només és vista: les regles (límit de tauler, fase...) viuen a ShopSystem; aquí només
+// s'envien ordres per IPlayerCommands.
 public class BenchView : MonoBehaviour
 {
     class Cell
@@ -16,15 +18,9 @@ public class BenchView : MonoBehaviour
         public bool isBench;
         public bool valid;       // es pot deixar una unitat aquí
         public int index;        // índex al banc o al tauler (-1 si no és vàlida)
+        public int c, r;         // coordenades Tile_c_r (només caselles del tauler)
         public GameObject ring, fill;
         public Renderer fillRenderer;
-    }
-
-    struct BoardTile
-    {
-        public int c, r;
-        public Vector3 pos;      // x,z = centre; y = cara superior
-        public Renderer[] rends;
     }
 
     static readonly Color validColor = new Color(0.25f, 1f, 0.45f, 1f);
@@ -36,8 +32,12 @@ public class BenchView : MonoBehaviour
     public bool Locked;                       // derrota: res no es pot moure
     public event Action<string> OnMessage;
     public bool IsDragging => isDragging;
+    public Transform BoardRoot { get; private set; }   // arrel "Board" amb les caselles Tile_c_r
+    public float TileRadius => tileRadius;             // mida de referència per crear UnitView
 
+    ShopSystem shop;
     Bench bench;
+    IPlayerCommands commands;
     Camera cam;
     readonly List<Cell> benchCells = new List<Cell>();
     readonly List<Cell> boardCells = new List<Cell>();   // només la meitat del jugador
@@ -56,9 +56,11 @@ public class BenchView : MonoBehaviour
     Cell hover;
 
     // ---------------------------------------------------------------- inici
-    public void Init(Bench bench, Transform benchRoot, Camera cam)
+    public void Init(ShopSystem shop, IPlayerCommands commands, Transform benchRoot, Camera cam)
     {
-        this.bench = bench;
+        this.shop = shop;
+        this.bench = shop.Bench;
+        this.commands = commands;
         this.cam = cam;
 
         // Caselles de la banqueta, ordenades d'esquerra a dreta a la pantalla
@@ -97,79 +99,29 @@ public class BenchView : MonoBehaviour
         Sync();
     }
 
-    // Busca el tauler (germà de la banqueta) i separa la meitat del jugador de l'enemiga
+    // La geometria la calcula BoardLayout; aquí només es converteix en caselles interactives
     void BuildBoardCells(Transform benchRoot)
     {
-        Transform boardRoot = null;
-        if (benchRoot.parent != null) boardRoot = benchRoot.parent.Find("Board");
-        if (boardRoot == null)
-        {
-            var g = GameObject.Find("Board");
-            if (g != null) boardRoot = g.transform;
-        }
-        if (boardRoot == null)
-        {
-            Debug.LogWarning("[BenchView] No s'ha trobat el tauler (\"Board\"): només es podrà moure dins del banc.");
-            return;
-        }
+        var benchPos = new List<Vector3>();
+        foreach (var c in benchCells) benchPos.Add(c.pos);
 
-        var list = new List<BoardTile>();
-        Vector3 sum = Vector3.zero;
-        foreach (Transform child in boardRoot)
+        var layout = BoardLayout.Build(benchRoot, benchPos);
+        if (layout == null) return;
+        BoardRoot = layout.BoardRoot;
+
+        if (benchCells.Count == 0 && layout.HexR > 0f) hexR = layout.HexR;
+
+        for (int i = 0; i < layout.Mine.Count && i < Bench.BoardSize; i++)
         {
-            if (!ParseTile(child.name, out int c, out int r)) continue;
-            var rs = child.GetComponentsInChildren<Renderer>();
-            if (rs.Length == 0) continue;
-            Bounds b = rs[0].bounds;
-            for (int i = 1; i < rs.Length; i++) b.Encapsulate(rs[i].bounds);
-            var bt = new BoardTile { c = c, r = r, pos = new Vector3(b.center.x, b.max.y, b.center.z), rends = rs };
-            list.Add(bt);
-            sum += bt.pos;
-            if (benchCells.Count == 0) hexR = b.size.z * 0.5f;
+            var cell = AddCell(boardCells, layout.Mine[i].pos, false, true, i);
+            cell.c = layout.Mine[i].c;
+            cell.r = layout.Mine[i].r;
         }
-        if (list.Count == 0) return;
-
-        // La meitat del jugador és la que queda del costat de la banqueta
-        Vector3 boardCenter = sum / list.Count;
-        Vector3 benchCenter = Vector3.zero;
-        foreach (var c in benchCells) benchCenter += c.pos;
-        if (benchCells.Count > 0) benchCenter /= benchCells.Count;
-        Vector3 dir = benchCenter - boardCenter; dir.y = 0f;
-
-        var mine = new List<BoardTile>();
-        var theirs = new List<BoardTile>();
-        foreach (var t in list)
-        {
-            Vector3 d = t.pos - boardCenter; d.y = 0f;
-            if (Vector3.Dot(d, dir) > 0.01f) mine.Add(t); else theirs.Add(t);
-        }
-
-        // Ordre: primera fila = la més propera a la banqueta; dins de cada fila, d'esquerra a dreta
-        bool lowFirst = true;
-        if (mine.Count > 0)
-        {
-            BoardTile lo = mine[0], hi = mine[0];
-            foreach (var t in mine)
-            {
-                if (t.r < lo.r) lo = t;
-                if (t.r > hi.r) hi = t;
-            }
-            Vector3 dl = lo.pos - boardCenter, dh = hi.pos - boardCenter;
-            lowFirst = Vector3.Dot(dl, dir) >= Vector3.Dot(dh, dir);
-        }
-        mine.Sort((a, b) =>
-        {
-            int ra = lowFirst ? a.r : -a.r, rb = lowFirst ? b.r : -b.r;
-            return ra != rb ? ra.CompareTo(rb) : a.c.CompareTo(b.c);
-        });
-
-        for (int i = 0; i < mine.Count && i < Bench.BoardSize; i++)
-            AddCell(boardCells, mine[i].pos, false, true, i);
-        foreach (var t in theirs)
+        foreach (var t in layout.Theirs)
             AddCell(enemyCells, t.pos, false, false, -1);
 
         // Camp rival en vermell (còpia del material: no toca els assets)
-        foreach (var t in theirs) TintRed(t.rends);
+        foreach (var t in layout.Theirs) TintRed(t.rends);
         var eb = GameObject.Find("EnemyBench");
         if (eb != null) TintRed(eb.GetComponentsInChildren<Renderer>());
     }
@@ -182,13 +134,6 @@ public class BenchView : MonoBehaviour
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.Lerp(m.GetColor("_BaseColor"), enemyTint, amount));
             if (m.HasProperty("_Color")) m.SetColor("_Color", Color.Lerp(m.GetColor("_Color"), enemyTint, amount));
         }
-    }
-
-    static bool ParseTile(string name, out int c, out int r)
-    {
-        c = 0; r = 0;
-        var p = name.Split('_');
-        return p.Length == 3 && p[0] == "Tile" && int.TryParse(p[1], out c) && int.TryParse(p[2], out r);
     }
 
     Cell AddCell(List<Cell> list, Vector3 topPos, bool isBench, bool valid, int index)
@@ -282,7 +227,7 @@ public class BenchView : MonoBehaviour
     {
         foreach (var c in allCells)
         {
-            if (c.ring != null) c.ring.SetActive(on);
+            if (c.ring != null) c.ring.SetActive(on && c.valid); // només les nostres caselles s'il·luminen
             if (c.fill != null) c.fill.SetActive(false);
         }
     }
@@ -292,9 +237,9 @@ public class BenchView : MonoBehaviour
         if (h == hover) return;
         if (hover != null && hover.fill != null) hover.fill.SetActive(false);
         hover = h;
-        if (hover != null && hover.fill != null)
+        if (hover != null && hover.fill != null && hover.valid) // la meitat rival no es resalta
         {
-            hover.fillRenderer.sharedMaterial = hover.valid ? matHoverOk : matHoverBad;
+            hover.fillRenderer.sharedMaterial = matHoverOk;
             hover.fill.SetActive(true);
         }
     }
@@ -318,7 +263,7 @@ public class BenchView : MonoBehaviour
 
     static bool OverUI()
     {
-        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        return (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) || UnitInspector.PointerOverPanel;
     }
 
     void BeginDrag()
@@ -375,9 +320,11 @@ public class BenchView : MonoBehaviour
 
         if (view != null && target != null)
         {
+            // Les regles (límit de tauler = nivell, fase...) les decideix ShopSystem.
+            // Si l'ordre no es pot fer, no canvia res i Sync() torna la unitat al seu lloc.
             if (!target.valid) OnMessage?.Invoke("Només pots col·locar unitats a la teva meitat");
-            else if (target.isBench) bench.MoveToBench(view.Unit, target.index);
-            else bench.MoveToBoard(view.Unit, target.index);
+            else if (target.isBench) commands.MoveToBench(view.Unit.Uid, target.index);
+            else commands.MoveToBoard(view.Unit.Uid, target.index);
         }
         Sync(); // si no s'ha mogut res, la unitat torna al seu lloc
     }
@@ -453,5 +400,27 @@ public class BenchView : MonoBehaviour
         if (isDragging && dragging != null) return dragging.Unit;
         var v = ViewUnderMouse();
         return v != null ? v.Unit : null;
+    }
+
+    // ---------------------------------------------------------------- combat
+    // Coordenades Tile_c_r de la casella del tauler amb aquest índex (0..BoardSize-1)
+    public bool TryGetBoardCoord(int index, out int c, out int r)
+    {
+        c = 0; r = 0;
+        if (index < 0 || index >= boardCells.Count) return false;
+        c = boardCells[index].c;
+        r = boardCells[index].r;
+        return true;
+    }
+
+    // Amaga/mostra les unitats reals del tauler (durant el combat lluiten còpies)
+    public void SetBoardUnitsVisible(bool visible)
+    {
+        if (bench == null) return;
+        for (int i = 0; i < Bench.BoardSize; i++)
+        {
+            var u = bench.BoardAt(i);
+            if (u != null && views.TryGetValue(u, out var v)) v.gameObject.SetActive(visible);
+        }
     }
 }

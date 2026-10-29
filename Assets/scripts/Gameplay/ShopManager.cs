@@ -4,6 +4,8 @@ using UnityEngine.EventSystems;
 
 // Punt d'entrada del mode un jugador: crea la botiga, el banc 3D i la UI.
 // Ús: posar-lo al mateix GameObject que PlayerStats (i PlayerHUD).
+// Tot el que fa el jugador passa per Commands (IPlayerCommands): ara LocalCommands;
+// en multijugador serà NetCommands i la resta no canvia.
 [RequireComponent(typeof(PlayerStats))]
 public class ShopManager : MonoBehaviour
 {
@@ -17,7 +19,10 @@ public class ShopManager : MonoBehaviour
     public int seed = -1;                   // >= 0 per a sorteigs repetibles
 
     public ShopSystem Shop { get; private set; }
+    public IPlayerCommands Commands { get; private set; }
     public event Action<string> OnMessage;
+    public BenchView BoardView => benchView;   // la fa servir CombatManager
+    public bool LockInput;                     // CombatManager el posa a true durant el combat
 
     PlayerStats stats;
     BenchView benchView;
@@ -26,6 +31,9 @@ public class ShopManager : MonoBehaviour
     {
         stats = GetComponent<PlayerStats>();
         Shop = new ShopSystem(new PlayerWallet(stats), seed);
+        Commands = new LocalCommands(Shop);
+        Commands.OnMessage += Say;
+
     }
 
     void Start()
@@ -40,49 +48,58 @@ public class ShopManager : MonoBehaviour
         else
         {
             benchView = new GameObject("BenchView").AddComponent<BenchView>();
-            benchView.Init(Shop.Bench, root, cam);
+            benchView.Init(Shop, Commands, root, cam);
             benchView.OnMessage += Say;
         }
 
-        if (GetComponent<GameOverUI>() == null) gameObject.AddComponent<GameOverUI>(); // pantalla de derrota
-        new GameObject("ShopUI").AddComponent<ShopUI>().Init(this, stats, cam, reserveCameraBottom, shopBarHeight);
-        Shop.NewRound(); // primera botiga gratuïta
+        if (GetComponent<GameOverUI>() == null)
+            gameObject.AddComponent<GameOverUI>();     // pantalla de derrota
+        if (GetComponent<CombatManager>() == null)
+            gameObject.AddComponent<CombatManager>();  // combat
+        if (GetComponent<UnitInspector>() == null)
+            gameObject.AddComponent<UnitInspector>();  // aura + panell d'informació
+
+        new GameObject("ShopUI").AddComponent<ShopUI>()
+            .Init(this, stats, cam, reserveCameraBottom, shopBarHeight);
+
+        Shop.NewRound();
+    }
+
+    void OnDestroy()
+    {
+        if (Commands != null) Commands.OnMessage -= Say;
     }
 
     void Update()
     {
-        if (benchView != null) benchView.Locked = stats.IsDead;
+        if (benchView != null) benchView.Locked = stats.IsDead || LockInput;
         if (stats.IsDead) return; // derrota: la botiga queda bloquejada
         if (InputUtil.Pressed(Hotkey.Reroll)) Reroll();
         if (InputUtil.Pressed(Hotkey.BuyXp)) BuyXp();
 
-        if (benchView != null && (InputUtil.RightClickDown || InputUtil.Pressed(Hotkey.Sell)))
+        if (benchView != null && InputUtil.Pressed(Hotkey.Sell)) // el clic dret ara obre el panell d'informació
         {
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
             Sell(benchView.UnderMouse());
         }
     }
 
-    // ---- accions (les usen la UI i les dreceres)
-    public void Reroll() => Report(Shop.Reroll());
-    public void BuyXp() => Report(Shop.BuyXp());
-    public void Buy(int slot) => Report(Shop.Buy(slot));
+    // ---- accions (les usen la UI i les dreceres): només reenvien l'ordre
+    public void Reroll() => Commands.Reroll();
+    public void BuyXp() => Commands.BuyXp();
+    public void Buy(int slot)
+    {
+        var d = Shop.GetSlot(slot);
+        Debug.Log("[Buy] unitat=" + (d != null ? d.Name : "-") + " cost=" + (d != null ? d.Cost : -1)
+            + " or=" + stats.Gold + " statsId=" + stats.GetInstanceID()
+            + " totalPlayerStats=" + FindObjectsByType<PlayerStats>(FindObjectsSortMode.None).Length);
+        Commands.Buy(slot);
+    }
 
     public void Sell(UnitInstance u)
     {
-        if (u == null) return;
-        int gold = Shop.Sell(u);
-        if (gold > 0) Say("Venut: +" + gold + " or");
-    }
-
-    void Report(ShopResult r)
-    {
-        switch (r)
-        {
-            case ShopResult.NotEnoughGold: Say("No tens prou or"); break;
-            case ShopResult.BenchFull: Say("El banc és ple"); break;
-            case ShopResult.MaxLevel: Say("Ja ets al nivell màxim"); break;
-        }
+        if (u == null || !Shop.Bench.Contains(u)) return; // només es venen unitats reals (no còpies de combat)
+        Commands.Sell(u.Uid);
     }
 
     void Say(string msg) => OnMessage?.Invoke(msg);

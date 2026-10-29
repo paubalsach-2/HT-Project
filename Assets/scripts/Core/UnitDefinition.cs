@@ -17,13 +17,15 @@ public sealed class UnitDefinition
     }
 }
 
-// Còpia concreta d'un personatge al banc (amb estrelles).
+// Còpia concreta d'un personatge al banc o al tauler (amb estrelles).
+// Uid: identificador estable dins de la partida (assignat pel generador del Bench).
 public sealed class UnitInstance
 {
     public readonly UnitDefinition Def;
+    public readonly int Uid;
     public int Star = 1;
 
-    public UnitInstance(UnitDefinition def) { Def = def; }
+    public UnitInstance(UnitDefinition def, int uid) { Def = def; Uid = uid; }
 
     // Còpies que equivalen a aquesta unitat (1, 3, 9)
     public int CopiesWorth => Star == 1 ? 1 : (Star == 2 ? 3 : 9);
