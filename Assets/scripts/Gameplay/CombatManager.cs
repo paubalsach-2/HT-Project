@@ -11,6 +11,16 @@ public struct CombatResult
     public float Duration;
 }
 
+// Dany fet per una unitat en un combat (el llegeix PlayerHUD a la pestanya Estadístiques)
+public struct UnitDamageStat
+{
+    public string Name;
+    public int Star;
+    public CombatTeam Team;
+    public float Damage;
+    public bool Alive;
+}
+
 // Executa UN combat: crea còpies de les unitats del tauler del jugador, posa l'equip enemic
 // a l'altra meitat, les fa lluitar i diu qui ha guanyat. No sap res de rondes: el futur
 // RoundManager només ha de cridar StartCombat() i escoltar OnCombatEnded / OnCombatCleared.
@@ -33,6 +43,7 @@ public class CombatManager : MonoBehaviour
 
     public bool IsRunning { get; private set; }   // combat en curs o pausa de resultat
     public CombatResult LastResult { get; private set; }
+    public int StatsRound { get; private set; }   // ronda a la qual corresponen les estadístiques de dany
 
     public event Action<CombatResult> OnCombatEnded;   // quan es decideix el guanyador
     public event Action OnCombatCleared;               // quan el camp ja s'ha netejat
@@ -50,6 +61,7 @@ public class CombatManager : MonoBehaviour
     Transform root;
     readonly List<CombatUnit> units = new List<CombatUnit>();
     readonly List<FloatText> floats = new List<FloatText>();
+    readonly List<UnitDamageStat> lastStats = new List<UnitDamageStat>(); // dany de l'últim combat (es conserva en acabar)
     readonly System.Random rng = new System.Random();
     float elapsed, resultTimer;
     bool finished;
@@ -90,6 +102,9 @@ public class CombatManager : MonoBehaviour
         root = new GameObject("CombatUnits").transform;
         units.Clear();
         floats.Clear();
+        lastStats.Clear();
+        var rm = GetComponent<RoundManager>();
+        StatsRound = rm != null ? rm.Round : 1;
 
         // Jugador: una còpia de cada unitat del tauler, a la seva casella
         var playerTiles = new HashSet<Vector2Int>();
@@ -211,8 +226,36 @@ public class CombatManager : MonoBehaviour
         OnCombatEnded?.Invoke(LastResult);
     }
 
+    // Omple 'into' amb el dany de cada unitat: en directe durant el combat i, un cop acabat, l'últim combat.
+    public void GetDamageStats(List<UnitDamageStat> into)
+    {
+        into.Clear();
+        if (IsRunning)
+        {
+            foreach (var u in units) into.Add(MakeStat(u));
+            return;
+        }
+        into.AddRange(lastStats);
+    }
+
+    static UnitDamageStat MakeStat(CombatUnit u)
+    {
+        return new UnitDamageStat
+        {
+            Name = u.Source.Def.Name,
+            Star = u.Source.Star,
+            Team = u.Team,
+            Damage = u.DamageDealt,
+            Alive = u.Alive
+        };
+    }
+
     void Cleanup()
     {
+        // guardem les estadístiques abans de destruir les unitats
+        lastStats.Clear();
+        foreach (var u in units) lastStats.Add(MakeStat(u));
+
         foreach (var u in units) u.Dispose();
         units.Clear();
         floats.Clear();

@@ -15,6 +15,7 @@ public sealed class CombatUnit
 
     public float Hp { get; private set; }
     public bool Alive => Hp > 0f;
+    public float DamageDealt { get; private set; }   // dany total fet en aquest combat (per a la pestanya Estadístiques)
     public Vector2Int Coord { get; private set; }
     public CombatUnit Target => target;
 
@@ -191,7 +192,7 @@ public sealed class CombatUnit
         if (!hitDone && t >= 0.5f)
         {
             hitDone = true;
-            if (target != null && target.Alive) target.TakeDamage(Stats.Attack);
+            if (target != null && target.Alive) DamageDealt += target.TakeDamage(Stats.Attack);
         }
         if (t >= 1f)
         {
@@ -200,14 +201,17 @@ public sealed class CombatUnit
         }
     }
 
-    public void TakeDamage(float amount)
+    // Retorna el dany realment fet (sense comptar el que sobra en matar)
+    public float TakeDamage(float amount)
     {
-        if (!Alive) return;
+        if (!Alive) return 0f;
+        float dealt = Mathf.Min(amount, Hp);
         Hp -= amount;
         ghostDelay = 0.45f;
         HitFlash = 1f;
         Damaged?.Invoke(this, amount);
         if (Hp <= 0f) Die();
+        return dealt;
     }
 
     void Die()
