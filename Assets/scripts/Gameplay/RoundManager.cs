@@ -1,177 +1,180 @@
 using System;
 using UnityEngine;
 
-// Compta les rondes i aplica el dany de vida quan perds un combat.
-// Dany en perdre = dany base de la ronda + supervivents enemics * damagePerSurvivor.
-// De moment el combat es continua llançant amb el botó "Provar combat" de CombatManager;
-// quan s'acaba un combat, la ronda avança sola.
+// Director de la partida (un jugador): governa el cicle Prep -> Combat -> Resolve amb un
+// PhaseTimer (Core), aplica l'economia amb Economy (Core) i el dany de vida en perdre.
+//   Prep     : comprar i col·locar (compte enrere). En acabar, comença el combat sol.
+//   Combat   : CombatManager reprodueix la simulació; en acabar es decideix el resultat.
+//   Resolve  : pausa curta per veure el resultat; en acabar, ronda següent (+ingressos, botiga nova).
 [RequireComponent(typeof(CombatManager))]
-public class RoundManager : MonoBehaviour
+public class RoundManager : MonoBehaviour, IRoundView
 {
-    [Header("Dany en perdre un combat")]
-    public int baseDamage = 2;                 // dany base a la ronda 1
-    public float extraDamagePerRound = 0.5f;   // quant creix el dany base cada ronda (0.5 = +1 cada 2 rondes)
-    public int damagePerSurvivor = 1;          // dany extra per cada unitat enemiga que sobrevisqui
-
-    [Header("Entre rondes")]
+    [Header("Fases")]
+    public float prepSeconds = 30f;           // temps de preparació per ronda
+    public float resolveSeconds = 2f;         // pausa després del combat
     public bool newShopEachRound = true;      // refresca la botiga en començar cada ronda
+    public bool showSkipButton = true;        // botó "Combatre ara" durant la preparació
 
-    [Header("Economia")]
-    public int goldPerRound = 5;              // ingrés base en acabar cada ronda
-    public int interestStep = 10;             // cada 'interestStep' d'or guardat...
-    public int interestPerStep = 1;           // ...donen aquest or extra d'interès
-    public int maxInterest = 5;               // límit de l'interès (amb 50 d'or)
+    public PhaseTimer Timer { get; } = new PhaseTimer();
+    public int Round => Timer.Round;
+    public MatchPhase Phase => Timer.Phase;
 
-    [Header("Interfície")]
-    public bool showRoundGUI = true;
+    // IRoundView (el que llegeix PhaseUI)
+    public bool Waiting => false;
+    public double SecondsLeft => Timer.SecondsLeft;
+    public bool CanSkipPrep => showSkipButton;
+    public void SkipPrep() => StartCombatNow();
 
-    public int Round { get; private set; } = 1;
     public int LastDamage { get; private set; }
+    public bool DamageShown { get; private set; }
+    public int LastIncomeBase { get; private set; }
+    public int LastIncomeInterest { get; private set; }
+    public float IncomeShownAt { get; private set; } = -100f;
 
-    public event Action<int> OnRoundChanged;   // nova ronda
-    public event Action<int> OnDamageTaken;    // vides perdudes en una derrota
-    public event Action<int, int> OnIncome;    // (ingrés base, interès) en acabar la ronda
+    public event Action<int> OnRoundChanged;               // nova ronda
+    public event Action<int> OnDamageTaken;                // vides perdudes en una derrota
+    public event Action<int, int> OnIncome;                // (ingrés base, interès) en començar la ronda
+    public event Action<MatchPhase, int> OnPhaseChanged;   // (fase, ronda)
 
     PlayerStats stats;
     ShopManager shop;
     CombatManager combat;
-    bool showDamage;
-    int lastBase, lastInterest;
-    float incomeShownAt = -100f;
+    float acc;
+    bool halted;      // derrota total: el rellotge s'atura
     bool wasDead;
-    GUIStyle roundStyle, damageStyle;
 
     void Awake()
     {
+        // En xarxa el cicle de rondes el du el servidor (MatchServer + MatchState); el client el veu amb NetRoundView.
+        if (ShopManager.Networked) { enabled = false; return; }
+
         stats = GetComponent<PlayerStats>();
         shop = GetComponent<ShopManager>();
         combat = GetComponent<CombatManager>();
+
+        Timer.PrepTicks = Mathf.Max(1, Mathf.RoundToInt(prepSeconds * SimConfig.TicksPerSecond));
+        Timer.ResolveTicks = Mathf.Max(1, Mathf.RoundToInt(resolveSeconds * SimConfig.TicksPerSecond));
+        Timer.OnPhaseChanged += HandlePhase;
     }
 
     void OnEnable()
     {
-        if (combat != null)
-        {
-            combat.OnCombatEnded += HandleCombatEnded;
-            combat.OnCombatCleared += HandleCombatCleared;
-        }
+        if (combat != null) combat.OnCombatEnded += HandleCombatEnded;
         if (stats != null) stats.OnLivesChanged += HandleLivesChanged;
     }
 
     void OnDisable()
     {
-        if (combat != null)
-        {
-            combat.OnCombatEnded -= HandleCombatEnded;
-            combat.OnCombatCleared -= HandleCombatCleared;
-        }
+        if (combat != null) combat.OnCombatEnded -= HandleCombatEnded;
         if (stats != null) stats.OnLivesChanged -= HandleLivesChanged;
     }
 
-    // ---------------------------------------------------------------- dany
-    public int BaseDamageForRound(int round)
+    void OnDestroy()
     {
-        return baseDamage + Mathf.FloorToInt(extraDamagePerRound * Mathf.Max(0, round - 1));
+        Timer.OnPhaseChanged -= HandlePhase;
     }
 
-    public int DamageFor(int round, int enemySurvivors)
+    void Start()
     {
-        return Mathf.Max(0, BaseDamageForRound(round) + enemySurvivors * damagePerSurvivor);
+        Timer.Start();
+        gameObject.AddComponent<PhaseUI>().Init(this, stats);
     }
 
-    // ---------------------------------------------------------------- economia
-    // Interès de l'or guardat: +interestPerStep per cada interestStep, amb límit maxInterest
-    public int InterestFor(int gold)
+    void Update()
     {
-        if (interestStep <= 0) return 0;
-        return Mathf.Clamp((gold / interestStep) * interestPerStep, 0, maxInterest);
+        if (halted) return;
+        acc += Mathf.Min(Time.deltaTime, 0.25f);
+        while (acc >= 1f / SimConfig.TicksPerSecond)
+        {
+            acc -= 1f / SimConfig.TicksPerSecond;
+            Timer.Tick();
+        }
     }
 
-    // ---------------------------------------------------------------- esdeveniments
+    // El jugador acaba la preparació abans d'hora
+    public void StartCombatNow() => Timer.SkipPrep();
+
+    // ---------------------------------------------------------------- economia i dany (Core/Economy)
+    public int BaseDamageForRound(int round) => Economy.BaseDamageForRound(round);
+    public int DamageFor(int round, int enemySurvivors) => Economy.DamageFor(round, enemySurvivors);
+    public int InterestFor(int gold) => Economy.InterestFor(gold);
+    public int MaxInterest => Economy.MaxInterest;
+
+    // ---------------------------------------------------------------- fases
+    void HandlePhase(MatchPhase phase, int round)
+    {
+        switch (phase)
+        {
+            case MatchPhase.Prep:
+                combat.ClearField();       // si venim d'un combat, tornem les unitats reals
+                DamageShown = false;
+                if (stats.IsDead)          // derrota total: no hi ha ronda següent
+                {
+                    halted = true;
+                    shop.Shop.CanRearrange = false;
+                    break;
+                }
+                shop.Shop.CanRearrange = true;
+                if (round > 1)
+                {
+                    int interest = Economy.InterestFor(stats.Gold);
+                    int total = Economy.GoldPerRound + interest;
+                    stats.AddGold(total);
+                    LastIncomeBase = Economy.GoldPerRound;
+                    LastIncomeInterest = interest;
+                    IncomeShownAt = Time.unscaledTime;
+                    OnIncome?.Invoke(LastIncomeBase, LastIncomeInterest);
+
+                    if (newShopEachRound) shop.Shop.NewRound();
+                    OnRoundChanged?.Invoke(round);
+                }
+                break;
+
+            case MatchPhase.Combat:
+                shop.Shop.CanRearrange = false;
+                if (!combat.StartCombat(round)) Timer.EndCombat(); // si no es pot lluitar, saltem la fase
+                break;
+
+            case MatchPhase.Resolve:
+                shop.Shop.CanRearrange = false;
+                break;
+        }
+        OnPhaseChanged?.Invoke(phase, round);
+    }
+
     void HandleCombatEnded(CombatResult result)
     {
         LastDamage = 0;
-        showDamage = false;
+        DamageShown = false;
 
         // només es perd vida si perds (un empat no fa mal)
-        if (result.Outcome != CombatOutcome.EnemyWon) return;
-
-        int dmg = DamageFor(Round, result.EnemySurvivors);
-        dmg = Mathf.Min(dmg, stats.Lives);   // les vides no baixen de 0
-        if (dmg <= 0) return;
-
-        stats.AddLives(-dmg);
-        LastDamage = dmg;
-        showDamage = true;
-        OnDamageTaken?.Invoke(dmg);
-    }
-
-    void HandleCombatCleared()
-    {
-        showDamage = false;
-        if (stats.IsDead) return;   // derrota total: no hi ha ronda següent
-
-        Round++;
-
-        int interest = InterestFor(stats.Gold);
-        int total = goldPerRound + interest;
-        if (total > 0) stats.AddGold(total);
-        lastBase = goldPerRound;
-        lastInterest = interest;
-        incomeShownAt = Time.unscaledTime;
-        OnIncome?.Invoke(goldPerRound, interest);
-
-        if (newShopEachRound) shop.Shop.NewRound();
-        OnRoundChanged?.Invoke(Round);
+        if (result.Outcome == CombatOutcome.EnemyWon)
+        {
+            int dmg = Economy.DamageFor(Round, result.EnemySurvivors);
+            dmg = Mathf.Min(dmg, stats.Lives);   // les vides no baixen de 0
+            if (dmg > 0)
+            {
+                stats.AddLives(-dmg);
+                LastDamage = dmg;
+                DamageShown = true;
+                OnDamageTaken?.Invoke(dmg);
+            }
+        }
+        Timer.EndCombat();
     }
 
     // Si després de morir es tornen a tenir vides (reinici de partida), tornem a la ronda 1
     void HandleLivesChanged(int lives, int delta)
     {
         if (stats.IsDead) { wasDead = true; return; }
-        if (wasDead)
-        {
-            wasDead = false;
-            Round = 1;
-            LastDamage = 0;
-            showDamage = false;
-            OnRoundChanged?.Invoke(Round);
-        }
-    }
+        if (!wasDead) return;
 
-    // ---------------------------------------------------------------- interfície
-    void OnGUI()
-    {
-        if (!showRoundGUI) return;
-
-        if (roundStyle == null)
-        {
-            roundStyle = new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold };
-            roundStyle.normal.textColor = Color.white;
-            damageStyle = new GUIStyle(GUI.skin.label) { fontSize = 28, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-            damageStyle.normal.textColor = new Color(1f, 0.35f, 0.35f);
-        }
-
-        // L'engranatge del PlayerHUD (a dalt a l'esquerra, 24 + 72 px del canvas 1920x1080) ocupa aquest racó:
-        // el text comença just a la seva dreta, seguint l'escala del canvas (MatchWidthOrHeight 0.5).
-        float k = Mathf.Pow(2f, 0.5f * (Mathf.Log(Screen.width / 1920f, 2f) + Mathf.Log(Screen.height / 1080f, 2f)));
-        float x = 96f * k + 12f;
-
-        GUI.Label(new Rect(x, 8f, 320f, 30f), "Ronda " + Round, roundStyle);
-        GUI.Label(new Rect(x, 32f, 320f, 24f), "Dany si perds: " + BaseDamageForRound(Round) + " + supervivents enemics");
-
-        int pending = InterestFor(stats.Gold);
-        GUI.Label(new Rect(x, 54f, 320f, 24f), "Or: " + stats.Gold + "   Interès: +" + pending + (pending >= maxInterest ? " (màx.)" : ""));
-
-        if (Time.unscaledTime - incomeShownAt < 3f)
-        {
-            damageStyle.normal.textColor = new Color(1f, 0.85f, 0.25f);
-            GUI.Label(new Rect(0f, 165f, Screen.width, 44f),
-                "+" + (lastBase + lastInterest) + " or  (" + lastBase + " base + " + lastInterest + " interès)", damageStyle);
-            damageStyle.normal.textColor = new Color(1f, 0.35f, 0.35f);
-        }
-
-        if (showDamage && LastDamage > 0)
-            GUI.Label(new Rect(0f, 115f, Screen.width, 44f), "-" + LastDamage + " vida", damageStyle);
+        wasDead = false;
+        halted = false;
+        LastDamage = 0;
+        DamageShown = false;
+        combat.ClearField();
+        Timer.Start();
+        OnRoundChanged?.Invoke(Round);
     }
 }

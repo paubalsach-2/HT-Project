@@ -21,6 +21,10 @@ public class LittleLegendMovement : MonoBehaviour
     private NavMeshAgent agent;
     private Camera mainCam;
 
+    // El clic dret ha començat sobre una unitat, el panell d'informació o la UI:
+    // no ha de moure el personatge, ni tan sols si després es mou el cursor amb el botó premut.
+    private bool holdBlocked;
+
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
@@ -34,14 +38,21 @@ public class LittleLegendMovement : MonoBehaviour
     {
         // Clic dret (1) = Moure's (igual que al TFT/LoL)
         // Si prefereixes clic esquerre, canvia el (1) per (0)
+        // El clic dret sobre una unitat (o el panell / la UI) només serveix per veure'n les estadístiques
+        // (UnitInspector); el personatge només es mou amb un clic dret al buit.
         if (Input.GetMouseButtonDown(1))
         {
-            MoveToCursor(true);
+            holdBlocked = UnitInspector.BlocksWorldClick;
+            if (!holdBlocked) MoveToCursor(true);
         }
         // Si mantens premut el clic dret, el personatge segueix el cursor sense spamejar l'efecte
         else if (Input.GetMouseButton(1))
         {
-            MoveToCursor(false);
+            if (!holdBlocked && !UnitInspector.BlocksWorldClick) MoveToCursor(false);
+        }
+        else
+        {
+            holdBlocked = false;
         }
 
         HandleRotation();

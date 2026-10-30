@@ -4,10 +4,16 @@ using System;
 public sealed class LocalCommands : IPlayerCommands
 {
     readonly ShopSystem shop;
+    readonly Action<int> debugGold, debugLives; // l'or i les vides viuen a PlayerStats (fora de Core)
 
     public event Action<string> OnMessage;
 
-    public LocalCommands(ShopSystem shop) { this.shop = shop; }
+    public LocalCommands(ShopSystem shop, Action<int> debugGold = null, Action<int> debugLives = null)
+    {
+        this.shop = shop;
+        this.debugGold = debugGold;
+        this.debugLives = debugLives;
+    }
 
     public void Buy(int slot) => ReportShop(shop.Buy(slot));
     public void Reroll() => ReportShop(shop.Reroll());
@@ -21,6 +27,9 @@ public sealed class LocalCommands : IPlayerCommands
 
     public void MoveToBoard(int uid, int boardIndex) => ReportMove(shop.MoveToBoard(uid, boardIndex));
     public void MoveToBench(int uid, int benchIndex) => ReportMove(shop.MoveToBench(uid, benchIndex));
+
+    public void DebugAddGold(int amount) => debugGold?.Invoke(amount);
+    public void DebugAddLives(int amount) => debugLives?.Invoke(amount);
 
     void ReportShop(ShopResult r)
     {

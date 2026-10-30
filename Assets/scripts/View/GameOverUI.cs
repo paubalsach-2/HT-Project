@@ -92,7 +92,7 @@ public class GameOverUI : MonoBehaviour
         b.colors = cb;
         b.onClick.AddListener(Restart);
 
-        var label = UIKit.Txt("Label", btn.transform, "TORNAR A JUGAR", 30f, Cream, TextAlignmentOptions.Center, fontLabel);
+        var label = UIKit.Txt("Label", btn.transform, ShopManager.Networked ? "SORTIR AL MENÚ" : "TORNAR A JUGAR", 30f, Cream, TextAlignmentOptions.Center, fontLabel);
         UIKit.Stretch(label.rectTransform, 0f);
 
         StartCoroutine(FadeIn());
@@ -111,6 +111,7 @@ public class GameOverUI : MonoBehaviour
 
     void Restart()
     {
+        if (ShopManager.Networked) { ShopManager.LeaveMatch(); return; } // en xarxa: sortir de la partida
         var sc = SceneManager.GetActiveScene();
 #if UNITY_EDITOR
         // Si l'escena no és a Build Settings, es carrega pel camí (només a l'editor)

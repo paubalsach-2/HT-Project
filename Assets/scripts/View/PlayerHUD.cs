@@ -16,6 +16,8 @@ public class PlayerEntry
 {
     public string name;
     public int lives, maxLives;
+    public ulong id;       // xarxa: ClientId del jugador
+    public bool local;     // xarxa: és el jugador d'aquest client
 }
 
 // Crea per codi el HUD d'un jugador (Canvas, panells, textos i botons de prova).
@@ -106,6 +108,10 @@ public class PlayerHUD : MonoBehaviour
     readonly List<PlayerEntry> entries = new List<PlayerEntry>();
     readonly List<UnitDamageStat> statBuf = new List<UnitDamageStat>();
     readonly PlayerEntry localEntry = new PlayerEntry();
+    readonly List<PlayerEntry> roster = new List<PlayerEntry>();   // xarxa: tots els jugadors, enviats pel servidor
+    bool hasRoster;
+    CombatView combatView;     // xarxa: fa el paper de CombatManager
+    NetRoundView netRound;     // xarxa: fa el paper de RoundManager
     System.Comparison<PlayerEntry> entryCmp;
     System.Comparison<UnitDamageStat> statCmp;
     int tab;
@@ -129,9 +135,10 @@ public class PlayerHUD : MonoBehaviour
         BuildLives();
         if (showInfoPanel)
         {
-            BuildPlaceholders();
+            if (!ShopManager.Networked) BuildPlaceholders();   // en xarxa els jugadors reals arriben amb SetRoster
             BuildInfoPanel();
         }
+        if (!ShopManager.DebugAllowed) showDebugPanel = false; // en xarxa: només host + build de desenvolupament
         if (showDebugPanel) BuildDebug();
         BuildSettingsMenu(); // l'últim: queda per sobre de tot
 
@@ -166,6 +173,16 @@ public class PlayerHUD : MonoBehaviour
         opponents.Clear();
         if (list != null) opponents.AddRange(list);
         infoTimer = 0f;
+    }
+
+    // XARXA: llista COMPLETA de jugadors (inclòs el local) tal com la publica el servidor.
+    // Substitueix els jugadors de mentida: la pestanya Ronda passa a mostrar les vides reals.
+    public void SetRoster(IList<PlayerEntry> list)
+    {
+        roster.Clear();
+        if (list != null) roster.AddRange(list);
+        hasRoster = true;
+        infoTimer = 0f;       // refresca al moment
     }
 
     // Actualitza la vida d'un rival pel seu nom
@@ -268,10 +285,17 @@ public class PlayerHUD : MonoBehaviour
         tabStatsImg = MakeTab(infoBorder.transform, "ESTADÍSTIQUES", new Vector2(10f + TabW + 6f, -10f), () => SetTab(1));
 
         infoHeader = Txt("Header", infoBorder.transform, "", 22f, goldText, TextAlignmentOptions.Left, true);
-        Place(infoHeader.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(14f, -52f), new Vector2(180f, 28f));
+        Place(infoHeader.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(14f, -52f), new Vector2(160f, 28f));
+        infoHeader.enableAutoSizing = true;      // "SENSE COMBATS" no pot saltar a dues línies
+        infoHeader.fontSizeMin = 12f;
+        infoHeader.fontSizeMax = 22f;
+        infoHeader.overflowMode = TextOverflowModes.Ellipsis;
 
         infoHeaderRight = Txt("HeaderRight", infoBorder.transform, "", 18f, labelTan, TextAlignmentOptions.Right, true);
         Place(infoHeaderRight.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-14f, -54f), new Vector2(110f, 26f));
+        infoHeaderRight.enableAutoSizing = true;
+        infoHeaderRight.fontSizeMin = 10f;
+        infoHeaderRight.fontSizeMax = 18f;
 
         SetTab(0);
     }
@@ -293,8 +317,9 @@ public class PlayerHUD : MonoBehaviour
 
         var t = Txt("Text", img.transform, text, 18f, textCream, TextAlignmentOptions.Center, false);
         t.enableAutoSizing = true;
-        t.fontSizeMin = 10f;
-        t.fontSizeMax = 18f;
+        t.fontSizeMin = 9f;
+        t.fontSizeMax = 16f;
+        t.overflowMode = TextOverflowModes.Ellipsis;
         Stretch(t.rectTransform, 3f);
         return img;
     }
@@ -318,17 +343,28 @@ public class PlayerHUD : MonoBehaviour
     // Pestanya Ronda: número de ronda + vida de tots els jugadors
     void RefreshRoundTab()
     {
-        int round = roundMgr != null ? roundMgr.Round : 1;
-        infoHeader.text = "RONDA " + round;
+        int round = CurrentRound();
+        infoHeader.text = round > 0 ? "RONDA " + round : "RONDA -";
         infoHeaderRight.text = "";
 
-        localEntry.name = localPlayerName;
-        localEntry.lives = stats.Lives;
-        localEntry.maxLives = stats.MaxLives;
-
         entries.Clear();
-        entries.Add(localEntry);
-        entries.AddRange(opponents);
+        if (hasRoster)
+        {
+            // XARXA: dades reals del servidor. La vida pròpia es llegeix directament (és la més fresca).
+            foreach (var p in roster)
+            {
+                if (p.local) { p.lives = stats.Lives; p.maxLives = stats.MaxLives; }
+                entries.Add(p);
+            }
+        }
+        else
+        {
+            localEntry.name = localPlayerName;
+            localEntry.lives = stats.Lives;
+            localEntry.maxLives = stats.MaxLives;
+            entries.Add(localEntry);
+            entries.AddRange(opponents);
+        }
         entries.Sort(entryCmp);
 
         SetRowCount(entries.Count);
@@ -336,7 +372,7 @@ public class PlayerHUD : MonoBehaviour
         {
             var e = entries[i];
             var r = rows[i];
-            bool local = e == localEntry;
+            bool local = e == localEntry || e.local;
             bool dead = e.lives <= 0;
             bool low = !dead && e.lives <= Mathf.CeilToInt(e.maxLives * lowLifeThreshold);
             float frac = e.maxLives > 0 ? Mathf.Clamp01((float)e.lives / e.maxLives) : 0f;
@@ -353,7 +389,22 @@ public class PlayerHUD : MonoBehaviour
     void RefreshStatsTab()
     {
         statBuf.Clear();
-        if (combatMgr != null) combatMgr.GetDamageStats(statBuf);
+        int statsRound = 0;
+        if (combatMgr != null)
+        {
+            combatMgr.GetDamageStats(statBuf);
+            statsRound = combatMgr.StatsRound;
+        }
+        else
+        {
+            // XARXA: el combat el reprodueix CombatView (es crea quan comença el primer combat)
+            if (combatView == null) combatView = FindFirstObjectByType<CombatView>();
+            if (combatView != null)
+            {
+                combatView.GetDamageStats(statBuf);
+                statsRound = combatView.StatsRound;
+            }
+        }
 
         if (statBuf.Count == 0)
         {
@@ -372,7 +423,7 @@ public class PlayerHUD : MonoBehaviour
             if (s.Damage > max) max = s.Damage;
         }
 
-        infoHeader.text = "RONDA " + combatMgr.StatsRound;
+        infoHeader.text = "RONDA " + statsRound;
         infoHeaderRight.text = "<color=#" + ColorUtility.ToHtmlStringRGB(gain) + ">" + Mathf.RoundToInt(playerTotal)
                              + "</color>  <color=#" + ColorUtility.ToHtmlStringRGB(danger) + ">" + Mathf.RoundToInt(enemyTotal) + "</color>";
 
@@ -405,9 +456,19 @@ public class PlayerHUD : MonoBehaviour
     {
         int c = b.lives.CompareTo(a.lives);
         if (c != 0) return c;
-        if (a == localEntry) return -1;
-        if (b == localEntry) return 1;
-        return string.CompareOrdinal(a.name, b.name);
+        bool la = a == localEntry || a.local, lb = b == localEntry || b.local;
+        if (la != lb) return la ? -1 : 1;
+        c = string.CompareOrdinal(a.name, b.name);
+        return c != 0 ? c : a.id.CompareTo(b.id);
+    }
+
+    // Ronda actual: RoundManager (un jugador) o el rellotge del servidor (xarxa). 0 = encara no ha començat.
+    int CurrentRound()
+    {
+        if (roundMgr != null && roundMgr.enabled) return roundMgr.Round;
+        if (netRound == null) netRound = FindFirstObjectByType<NetRoundView>();
+        if (netRound != null) return netRound.Round;
+        return ShopManager.Networked ? 0 : 1;
     }
 
     static int CompareStats(UnitDamageStat a, UnitDamageStat b)
@@ -533,10 +594,23 @@ public class PlayerHUD : MonoBehaviour
         var label = Txt("Label", p, "DEBUG", 20f, labelTan, TextAlignmentOptions.TopLeft, false);
         Place(label.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(14f, -10f), new Vector2(160f, 26f));
 
-        DebugButton(p, "+" + debugGoldStep + " or", new Vector2(12f, -46f), () => stats.AddGold(debugGoldStep));
-        DebugButton(p, "-" + debugGoldStep + " or", new Vector2(178f, -46f), () => stats.AddGold(-debugGoldStep));
-        DebugButton(p, "+" + debugLifeStep + " vida", new Vector2(12f, -120f), () => stats.AddLives(debugLifeStep));
-        DebugButton(p, "-" + debugLifeStep + " vida", new Vector2(178f, -120f), () => stats.AddLives(-debugLifeStep));
+        DebugButton(p, "+" + debugGoldStep + " or", new Vector2(12f, -46f), () => DebugGold(debugGoldStep));
+        DebugButton(p, "-" + debugGoldStep + " or", new Vector2(178f, -46f), () => DebugGold(-debugGoldStep));
+        DebugButton(p, "+" + debugLifeStep + " vida", new Vector2(12f, -120f), () => DebugLives(debugLifeStep));
+        DebugButton(p, "-" + debugLifeStep + " vida", new Vector2(178f, -120f), () => DebugLives(-debugLifeStep));
+    }
+
+    // El debug passa per les ordres (en xarxa les valida el servidor: només host + build de desenvolupament)
+    void DebugGold(int n)
+    {
+        var m = GetComponent<ShopManager>();
+        if (m != null) m.Commands.DebugAddGold(n); else stats.AddGold(n);
+    }
+
+    void DebugLives(int n)
+    {
+        var m = GetComponent<ShopManager>();
+        if (m != null) m.Commands.DebugAddLives(n); else stats.AddLives(n);
     }
 
     void DebugButton(Transform parent, string text, Vector2 pos, UnityAction onClick)
@@ -597,7 +671,7 @@ public class PlayerHUD : MonoBehaviour
         if (settingsRoot == null) return;
         settingsRoot.SetActive(open);
         MenuOpen = open;
-        Time.timeScale = open ? 0f : 1f;
+        Time.timeScale = (open && !ShopManager.Networked) ? 0f : 1f; // en xarxa no hi ha pausa
         if (open) { RefreshSettingsLabels(); SetStatus("ESC per tancar"); }
     }
 
@@ -635,7 +709,7 @@ public class PlayerHUD : MonoBehaviour
 
         // Accions
         MenuButton(p, "CONTINUAR", new Vector2(40f, -366f), new Vector2(540f, 64f), () => SetSettingsOpen(false));
-        MenuButton(p, "REINICIAR", new Vector2(40f, -446f), new Vector2(262f, 64f), RestartGame);
+        MenuButton(p, ShopManager.Networked ? "ABANDONAR" : "REINICIAR", new Vector2(40f, -446f), new Vector2(262f, 64f), RestartGame);
         MenuButton(p, "SORTIR", new Vector2(318f, -446f), new Vector2(262f, 64f), QuitGame);
 
         settingsStatus = Txt("Status", p, "", 18f, labelTan, TextAlignmentOptions.Center, false);
@@ -661,6 +735,11 @@ public class PlayerHUD : MonoBehaviour
     void ToggleDebug()
     {
         bool v = !showDebugPanel;
+        if (v && !ShopManager.DebugAllowed)
+        {
+            SetStatus("El debug no està disponible en aquesta partida");
+            return;
+        }
         if (v && debugRoot == null)
         {
             BuildDebug();
@@ -673,6 +752,7 @@ public class PlayerHUD : MonoBehaviour
     void RestartGame()
     {
         SetSettingsOpen(false);
+        if (ShopManager.Networked) { ShopManager.LeaveMatch(); return; } // en xarxa: sortir de la partida
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 

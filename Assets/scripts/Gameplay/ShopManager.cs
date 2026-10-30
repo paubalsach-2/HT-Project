@@ -1,11 +1,14 @@
 using System;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-// Punt d'entrada del mode un jugador: crea la botiga, el banc 3D i la UI.
+// Punt d'entrada del jugador LOCAL: crea la botiga, el banc 3D i la UI.
 // Ús: posar-lo al mateix GameObject que PlayerStats (i PlayerHUD).
-// Tot el que fa el jugador passa per Commands (IPlayerCommands): ara LocalCommands;
-// en multijugador serà NetCommands i la resta no canvia.
+// Tot el que fa el jugador passa per Commands (IPlayerCommands):
+//  - Offline: LocalCommands i un ShopSystem real amb el PlayerStats com a moneder.
+//  - En xarxa: NetCommands i un ShopSystem RÈPLICA, que només s'actualitza amb els snapshots del
+//    servidor (l'or i les vides de PlayerStats són un mirall del que diu el servidor).
 [RequireComponent(typeof(PlayerStats))]
 public class ShopManager : MonoBehaviour
 {
@@ -24,16 +27,33 @@ public class ShopManager : MonoBehaviour
     public BenchView BoardView => benchView;   // la fa servir CombatManager
     public bool LockInput;                     // CombatManager el posa a true durant el combat
 
+    // true si estem dins d'una sessió de xarxa (host o client)
+    public static bool Networked => NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening;
+    // Debug (or/vides a mà): offline sempre; en xarxa només el host i només en Editor / Development build
+    public static bool DebugAllowed => !Networked || (Debug.isDebugBuild && NetworkManager.Singleton.IsHost);
+    public bool IsNetworked { get; private set; }
+
+    NetCommands netCommands;
+
     PlayerStats stats;
     BenchView benchView;
 
     void Awake()
     {
         stats = GetComponent<PlayerStats>();
-        Shop = new ShopSystem(new PlayerWallet(stats), seed);
-        Commands = new LocalCommands(Shop);
-        Commands.OnMessage += Say;
+        IsNetworked = Networked;
+        Shop = new ShopSystem(new PlayerWallet(stats), seed); // en xarxa és una rèplica: no es fa servir el seu pool
 
+        if (IsNetworked)
+        {
+            netCommands = new NetCommands(Shop);
+            Commands = netCommands;
+        }
+        else
+        {
+            Commands = new LocalCommands(Shop, stats.AddGold, stats.AddLives);
+        }
+        Commands.OnMessage += Say;
     }
 
     void Start()
@@ -62,7 +82,7 @@ public class ShopManager : MonoBehaviour
         new GameObject("ShopUI").AddComponent<ShopUI>()
             .Init(this, stats, cam, reserveCameraBottom, shopBarHeight);
 
-        Shop.NewRound();
+        if (!IsNetworked) Shop.NewRound(); // en xarxa, la botiga la reparteix el servidor
     }
 
     void OnDestroy()
@@ -103,6 +123,33 @@ public class ShopManager : MonoBehaviour
     }
 
     void Say(string msg) => OnMessage?.Invoke(msg);
+
+    // ---- xarxa (els crida PlayerNet del jugador local)
+    public void BindNet(PlayerNet net)
+    {
+        if (netCommands != null) netCommands.Bind(net);
+    }
+
+    public void UnbindNet()
+    {
+        if (netCommands != null) netCommands.Bind(null);
+    }
+
+    // Estat privat enviat pel servidor. L'or primer: la UI el llegeix quan la botiga avisa que ha canviat.
+    public void ApplyNetSnapshot(PlayerSnapshot snap, string msg)
+    {
+        stats.SetGold(snap.Gold);
+        Shop.ApplySnapshot(snap);
+        if (!string.IsNullOrEmpty(msg)) Say(msg);
+    }
+
+    public void ApplyNetLives(int lives) => stats.SetLives(lives);
+
+    // Surt de la partida de xarxa i torna al menú (tanca també la sala de Relay)
+    public static void LeaveMatch()
+    {
+        if (NetBootstrap.Instance != null) NetBootstrap.Instance.LeaveToMenu();
+    }
 
     // La banqueta del jugador és la més propera a la càmera (la de baix a la pantalla)
     Transform FindPlayerBench()

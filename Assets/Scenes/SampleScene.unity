@@ -384,34 +384,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TFTCameraController
   target: {fileID: 1147859273}
-  cameraHeight: 15
   isLocked: 0
   smoothFollowSpeed: 12
   panSpeed: 20
-  panBorderThickness: 15
+  fastPanMultiplier: 2
+  scalePanWithZoom: 1
   useEdgeScrolling: 1
+  useWasdPan: 0
+  panBorderThickness: 15
+  edgeScrollInEditor: 0
+  dragWithMiddleMouse: 1
   panLimitX: {x: -20, y: 20}
   panLimitZ: {x: -20, y: 20}
-  scrollSpeed: 20
+  zoomStep: 0.12
+  zoomToCursor: 1
   minY: 6
   maxY: 20
+  cameraHeight: 15
+  groundY: 0
 --- !u!1 &1147859271 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
   m_PrefabInstance: {fileID: 1510428731}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1147859272
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1147859271}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a1ba6361a1496ea448de446cc834cfec, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AnimadorPersonaje3D
 --- !u!4 &1147859273 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
@@ -458,24 +453,6 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
---- !u!114 &1147859276
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1147859271}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3baf412a5681758408772545ef3b98a7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ShopManager
-  cam: {fileID: 0}
-  benchRootOverride: {fileID: 0}
-  reserveCameraBottom: 1
-  shopBarHeight: 240
-  seed: -1
-  LockInput: 0
 --- !u!114 &1147859277
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -495,8 +472,14 @@ MonoBehaviour:
   debugGoldStep: 5
   debugLifeStep: 1
   lowLifeThreshold: 0.25
+  showInfoPanel: 1
+  localPlayerName: Tu
+  maxStatRows: 12
+  placeholderOpponents: 7
+  simulatePlaceholderDamage: 0
   goldPosition: {x: 24, y: 8}
   livesPosition: {x: -24, y: -24}
+  infoPosition: {x: -24, y: -140}
   debugPosition: {x: -24, y: 24}
   bronze: {r: 0.72156864, g: 0.5372549, b: 0.24705882, a: 1}
   panelDark: {r: 0.13725491, g: 0.101960786, b: 0.07058824, a: 0.92156863}
@@ -522,51 +505,24 @@ MonoBehaviour:
   startGold: 10
   maxLives: 20
   startLives: 20
---- !u!1 &1492020436
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1492020438}
-  - component: {fileID: 1492020437}
-  m_Layer: 0
-  m_Name: CombatManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1492020437
+--- !u!114 &1147859279
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1492020436}
+  m_GameObject: {fileID: 1147859271}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bd81110a867b9504ea137d759efbf2d3, type: 3}
+  m_Script: {fileID: 11500000, guid: 9413c7bf4a580274eb1c336a6ddd9ba8, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TFTCombatManager
-  currentState: 0
---- !u!4 &1492020438
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1492020436}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4.78814, y: -0.01, z: 6.34618}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::ShopManager
+  cam: {fileID: 0}
+  benchRootOverride: {fileID: 0}
+  reserveCameraBottom: 1
+  shopBarHeight: 240
+  seed: -1
+  LockInput: 0
 --- !u!1001 &1510428731
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -637,9 +593,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1147859272}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1147859275}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
       insertIndex: -1
@@ -652,7 +605,7 @@ PrefabInstance:
       addedObject: {fileID: 1147859277}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1147859276}
+      addedObject: {fileID: 1147859279}
   m_SourcePrefab: {fileID: 100100000, guid: 7f4bdb08bbacec5429dd427db8fb9ce6, type: 3}
 --- !u!1 &1861084626 stripped
 GameObject:
@@ -699,4 +652,3 @@ SceneRoots:
   - {fileID: 705507995}
   - {fileID: 940643882}
   - {fileID: 1510428731}
-  - {fileID: 1492020438}
